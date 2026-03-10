@@ -15,43 +15,43 @@ import { useAssets } from '@/hooks/useAssets'
 import { useAssetStore } from '@/store/assetStore'
 import { useSnapshot } from '@/hooks/useSnapshot'
 import { useTransactions } from '@/hooks/useTransactions'
+import { usePriceSync } from '@/hooks/usePriceSync'
 
 function AppContent() {
-  const { settings } = useSettingsStore()
+  const { settings, isLocked } = useSettingsStore()
   const { loadAssets } = useAssets()
   const { assets } = useAssetStore()
   const { initializeSnapshots } = useSnapshot()
   const { loadTransactions } = useTransactions()
 
-  // isLocked is false when encryption is disabled
-  const isLocked = settings.isEncryptionEnabled
-    ? useSettingsStore.getState().isLocked
-    : false
+  // 暗号化が無効な場合は常にロック解除状態
+  const locked = settings.isEncryptionEnabled ? isLocked : false
 
   // Load assets and transactions from IndexedDB on mount
   useEffect(() => {
-    if (!isLocked) {
+    if (!locked) {
       void loadAssets()
       void loadTransactions()
     }
-  }, [isLocked, loadAssets, loadTransactions])
+  }, [locked, loadAssets, loadTransactions])
 
   // Save/load snapshots once assets are available
   useEffect(() => {
-    if (assets.length > 0 && !isLocked) {
+    if (assets.length > 0 && !locked) {
       void initializeSnapshots(assets)
     }
-  }, [assets.length, isLocked, initializeSnapshots])
+  }, [assets.length, locked, initializeSnapshots])
 
   return (
     <>
-      {isLocked ? (
+      {locked ? (
         <Routes>
           <Route path="/unlock" element={<Unlock />} />
           <Route path="*" element={<Navigate to="/unlock" replace />} />
         </Routes>
       ) : (
         <AppShell>
+          <PriceSyncInitializer />
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/assets/*" element={<Assets />} />
@@ -67,6 +67,13 @@ function AppContent() {
       <ToastContainer />
     </>
   )
+}
+
+/** 価格自動更新インターバルを管理するコンポーネント（副作用のみ、何も描画しない） */
+function PriceSyncInitializer() {
+  // usePriceSync内でpriceAutoRefreshとintervalを監視してタイマーを設定する
+  usePriceSync()
+  return null
 }
 
 function App() {

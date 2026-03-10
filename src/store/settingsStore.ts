@@ -5,10 +5,14 @@ import { DEFAULT_SETTINGS } from '@/types/settings.types'
 
 interface SettingsState {
   settings: AppSettings
-  isLocked: boolean              // 暗号化有効かつ未ロック解除の状態
+  /** 暗号化有効かつ未ロック解除の状態（永続化しない） */
+  isLocked: boolean
+  /** 現在のセッションで使用する暗号化キー（永続化しない） */
+  cryptoKey: CryptoKey | null
   updateSettings: (patch: Partial<AppSettings>) => void
   lock: () => void
-  unlock: () => void
+  unlock: (key?: CryptoKey) => void
+  setKey: (key: CryptoKey | null) => void
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -16,20 +20,29 @@ export const useSettingsStore = create<SettingsState>()(
     (set) => ({
       settings: DEFAULT_SETTINGS,
       isLocked: false,
+      cryptoKey: null,
 
       updateSettings: (patch) =>
         set((state) => ({
           settings: { ...state.settings, ...patch },
         })),
 
-      lock: () => set({ isLocked: true }),
+      lock: () => set({ isLocked: true, cryptoKey: null }),
 
-      unlock: () => set({ isLocked: false }),
+      unlock: (key) => set({ isLocked: false, cryptoKey: key ?? null }),
+
+      setKey: (key) => set({ cryptoKey: key }),
     }),
     {
       name: 'asset-mgmt-settings',
-      // isLockedはセッション状態なので永続化しない
+      // isLocked と cryptoKey はセッション状態なので永続化しない
       partialize: (state) => ({ settings: state.settings }),
+      onRehydrateStorage: () => (state) => {
+        // ページ読み込み時、暗号化が有効なら再ロック
+        if (state?.settings.isEncryptionEnabled) {
+          state.isLocked = true
+        }
+      },
     },
   ),
 )

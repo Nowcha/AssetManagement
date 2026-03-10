@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom'
 import { useAssetStore } from '@/store/assetStore'
 import { usePortfolio } from '@/hooks/usePortfolio'
 import { useSnapshot } from '@/hooks/useSnapshot'
+import { usePriceSync } from '@/hooks/usePriceSync'
 import { calcAssetSummary } from '@/utils/calculations'
 import { formatJpy, formatGainRate, formatGainJpy, formatPercent, formatDateTime } from '@/utils/formatters'
 import { AssetAllocationPie } from '@/components/charts/AssetAllocationPie'
@@ -15,6 +16,7 @@ export function Dashboard() {
   const { assets, isLoading } = useAssetStore()
   const { summary, assetBreakdown, isLoading: portfolioLoading } = usePortfolio()
   const { snapshots } = useSnapshot()
+  const { isSyncing, lastSyncAt, syncPrices } = usePriceSync()
 
   if (isLoading || portfolioLoading) {
     return (
@@ -82,16 +84,34 @@ export function Dashboard() {
         </div>
 
         {/* Sub info */}
-        <div className="mt-3 flex flex-wrap gap-4">
-          {summary && (
-            <p className="text-sm text-ink-secondary">
-              投資元本:&nbsp;
-              <span className="font-amount text-white">{formatJpy(summary.totalCostJpy)}</span>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap gap-4">
+            {summary && (
+              <p className="text-sm text-ink-secondary">
+                投資元本:&nbsp;
+                <span className="font-amount text-white">{formatJpy(summary.totalCostJpy)}</span>
+              </p>
+            )}
+            <p className="text-xs text-ink-muted">
+              最終更新: {summary ? formatDateTime(summary.lastUpdatedAt) : '—'}
             </p>
+            {lastSyncAt && (
+              <p className="text-xs text-ink-muted">
+                価格同期: {formatDateTime(lastSyncAt)}
+              </p>
+            )}
+          </div>
+          {assets.length > 0 && (
+            <button
+              type="button"
+              onClick={() => void syncPrices()}
+              disabled={isSyncing}
+              className="btn-ghost text-xs"
+              style={{ opacity: isSyncing ? 0.6 : 1 }}
+            >
+              {isSyncing ? '同期中...' : '価格を更新'}
+            </button>
           )}
-          <p className="text-xs text-ink-muted">
-            最終更新: {summary ? formatDateTime(summary.lastUpdatedAt) : '—'}
-          </p>
         </div>
       </div>
 
