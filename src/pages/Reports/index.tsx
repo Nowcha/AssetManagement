@@ -134,7 +134,7 @@ export function Reports() {
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => exportAssetsToCSV(assets)}
+            onClick={() => { exportAssetsToCSV(assets); }}
             className="btn-ghost text-xs"
             disabled={assets.length === 0}
           >
@@ -142,7 +142,7 @@ export function Reports() {
           </button>
           <button
             type="button"
-            onClick={() => exportTransactionsToCSV(transactions)}
+            onClick={() => { exportTransactionsToCSV(transactions); }}
             className="btn-ghost text-xs"
             disabled={transactions.length === 0}
           >
@@ -161,7 +161,7 @@ export function Reports() {
             <button
               key={y}
               type="button"
-              onClick={() => setSelectedYear(y)}
+              onClick={() => { setSelectedYear(y); }}
               className="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
               style={
                 selectedYear === y

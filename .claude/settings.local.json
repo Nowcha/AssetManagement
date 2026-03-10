@@ -36,7 +36,9 @@
       "Bash(cd \"D:/Project/13_AssetManagement\" && npx eslint src/components/assets/AssetList/index.tsx 2>&1 | grep \"error\")",
       "Bash(cd \"D:/Project/13_AssetManagement\" && npx eslint --fix src/components/transactions/TransactionList/index.tsx 2>&1)",
       "Bash(cd \"D:/Project/13_AssetManagement\" && npx eslint src/utils/csv.ts src/utils/transactionCalculator.ts src/store/transactionStore.ts src/hooks/useTransactions.ts src/pages/Transactions/index.tsx src/pages/Performance/index.tsx src/components/transactions/TransactionForm/index.tsx src/components/transactions/TransactionList/index.tsx src/components/charts/PerformanceBar/index.tsx src/App.tsx 2>&1 | grep \"error\\\\|warning\")",
-      "Bash(cd \"D:/Project/13_AssetManagement\" && npm run build 2>&1 | tail -15 && npm test -- --run 2>&1 | tail -8)"
+      "Bash(cd \"D:/Project/13_AssetManagement\" && npm run build 2>&1 | tail -15 && npm test -- --run 2>&1 | tail -8)",
+      "Bash(cd \"D:\\\\Project\\\\13_AssetManagement\" && npm test -- --run 2>&1)",
+      "Bash(cd \"D:\\\\Project\\\\13_AssetManagement\" && npm install -D vite-plugin-pwa 2>&1)"
     ]
   }
 }

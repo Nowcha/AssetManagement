@@ -65,7 +65,7 @@ function NumberInput({
         <input
           type="number"
           value={value}
-          onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+          onChange={(e) => { onChange(parseFloat(e.target.value) || 0); }}
           min={min}
           max={max}
           step={step ?? 1}
@@ -186,7 +186,7 @@ export function Simulation() {
               assets.length > 0 ? `ポートフォリオ合計: ${formatJpy(currentTotal)}` : undefined
             }
             value={params.initialAmount}
-            onChange={(v) => setParam('initialAmount', v)}
+            onChange={(v) => { setParam('initialAmount', v); }}
             suffix="円"
             min={0}
             step={10000}
@@ -195,7 +195,7 @@ export function Simulation() {
           <NumberInput
             label="月次積立額"
             value={params.monthlyContribution}
-            onChange={(v) => setParam('monthlyContribution', v)}
+            onChange={(v) => { setParam('monthlyContribution', v); }}
             suffix="円/月"
             min={0}
             step={1000}
@@ -204,7 +204,7 @@ export function Simulation() {
           <NumberInput
             label="目標金額"
             value={params.targetAmount}
-            onChange={(v) => setParam('targetAmount', v)}
+            onChange={(v) => { setParam('targetAmount', v); }}
             suffix="円"
             min={0}
             step={100000}
@@ -213,7 +213,7 @@ export function Simulation() {
           <NumberInput
             label="運用期間"
             value={params.years}
-            onChange={(v) => setParam('years', Math.min(40, Math.max(1, Math.round(v))))}
+            onChange={(v) => { setParam('years', Math.min(40, Math.max(1, Math.round(v)))); }}
             suffix="年"
             min={1}
             max={40}
@@ -228,7 +228,7 @@ export function Simulation() {
                 <button
                   key={p.label}
                   type="button"
-                  onClick={() => applyPreset(i)}
+                  onClick={() => { applyPreset(i); }}
                   className="rounded-lg px-2.5 py-1 text-xs font-medium transition-colors"
                   style={
                     selectedPreset === i
@@ -246,7 +246,7 @@ export function Simulation() {
             <NumberInput
               label="期待年率リターン"
               value={Math.round(params.expectedAnnualReturn * 1000) / 10}
-              onChange={(v) => setParam('expectedAnnualReturn', v / 100)}
+              onChange={(v) => { setParam('expectedAnnualReturn', v / 100); }}
               suffix="%"
               min={-20}
               max={50}
@@ -255,7 +255,7 @@ export function Simulation() {
             <NumberInput
               label="年率標準偏差"
               value={Math.round(params.stdDev * 1000) / 10}
-              onChange={(v) => setParam('stdDev', Math.max(0, v / 100))}
+              onChange={(v) => { setParam('stdDev', Math.max(0, v / 100)); }}
               suffix="%"
               min={0}
               max={100}

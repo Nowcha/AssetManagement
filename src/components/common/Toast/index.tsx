@@ -53,7 +53,7 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
       onRemove(toast.id)
     }, TOAST_DURATION_MS)
 
-    return () => clearTimeout(timer)
+    return () => { clearTimeout(timer); }
   }, [toast.id, onRemove])
 
   return (
@@ -86,7 +86,7 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
       {/* Close button */}
       <button
         type="button"
-        onClick={() => onRemove(toast.id)}
+        onClick={() => { onRemove(toast.id); }}
         className="ml-1 flex-shrink-0 text-xs transition-colors"
         style={{ color: '#4B5563' }}
         aria-label="通知を閉じる"
@@ -111,7 +111,7 @@ export function ToastContainer() {
 
   return (
     <div
-      className="fixed bottom-5 right-5 z-50 flex flex-col gap-2"
+      className="fixed bottom-20 right-4 z-50 flex flex-col gap-2 md:bottom-5 md:right-5"
       aria-label="通知一覧"
     >
       {toasts.map((toast) => (

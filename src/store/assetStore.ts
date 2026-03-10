@@ -18,24 +18,24 @@ export const useAssetStore = create<AssetState>()((set) => ({
   isLoading: false,
   error: null,
 
-  setAssets: (assets) => set({ assets }),
+  setAssets: (assets) => { set({ assets }); },
 
   addAsset: (asset) =>
-    set((state) => ({ assets: [...state.assets, asset] })),
+    { set((state) => ({ assets: [...state.assets, asset] })); },
 
   updateAsset: (id, patch) =>
-    set((state) => ({
+    { set((state) => ({
       assets: state.assets.map((a) =>
         a.id === id ? { ...a, ...patch } : a,
       ),
-    })),
+    })); },
 
   removeAsset: (id) =>
-    set((state) => ({
+    { set((state) => ({
       assets: state.assets.filter((a) => a.id !== id),
-    })),
+    })); },
 
-  setLoading: (isLoading) => set({ isLoading }),
+  setLoading: (isLoading) => { set({ isLoading }); },
 
-  setError: (error) => set({ error }),
+  setError: (error) => { set({ error }); },
 }))

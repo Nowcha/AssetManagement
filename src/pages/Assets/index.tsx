@@ -54,7 +54,7 @@ function NewAssetPage() {
       <div className="glass-card p-6">
         <AssetForm
           onSubmit={handleSubmit}
-          onCancel={() => navigate('/assets')}
+          onCancel={() => { navigate('/assets'); }}
         />
       </div>
     </div>
@@ -120,7 +120,7 @@ function EditAssetPage() {
         <AssetForm
           defaultValues={defaultValues}
           onSubmit={handleSubmit}
-          onCancel={() => navigate('/assets')}
+          onCancel={() => { navigate('/assets'); }}
         />
       </div>
     </div>

@@ -113,7 +113,7 @@ export function PortfolioTimeline({ snapshots }: PortfolioTimelineProps) {
           <button
             key={p.key}
             type="button"
-            onClick={() => setPeriod(p.key)}
+            onClick={() => { setPeriod(p.key); }}
             className={
               period === p.key
                 ? 'rounded-md bg-accent-subtle px-3 py-1 text-xs text-accent'

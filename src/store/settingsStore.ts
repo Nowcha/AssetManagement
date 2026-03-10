@@ -23,15 +23,15 @@ export const useSettingsStore = create<SettingsState>()(
       cryptoKey: null,
 
       updateSettings: (patch) =>
-        set((state) => ({
+        { set((state) => ({
           settings: { ...state.settings, ...patch },
-        })),
+        })); },
 
-      lock: () => set({ isLocked: true, cryptoKey: null }),
+      lock: () => { set({ isLocked: true, cryptoKey: null }); },
 
-      unlock: (key) => set({ isLocked: false, cryptoKey: key ?? null }),
+      unlock: (key) => { set({ isLocked: false, cryptoKey: key ?? null }); },
 
-      setKey: (key) => set({ cryptoKey: key }),
+      setKey: (key) => { set({ cryptoKey: key }); },
     }),
     {
       name: 'asset-mgmt-settings',

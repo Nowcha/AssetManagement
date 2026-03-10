@@ -167,6 +167,29 @@
   }
 }
 
+/* prefers-reduced-motion: アニメーション無効化 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* フォーカス可視化（キーボード操作時のみ） */
+:focus-visible {
+  outline: 2px solid #FFA16C;
+  outline-offset: 2px;
+}
+
+/* マウス操作ではアウトライン非表示 */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
 @layer utilities {
   /* Tabular numbers for financial data */
   .font-amount {

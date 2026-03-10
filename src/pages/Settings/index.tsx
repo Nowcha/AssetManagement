@@ -63,7 +63,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
       type="button"
       role="switch"
       aria-checked={checked}
-      onClick={() => onChange(!checked)}
+      onClick={() => { onChange(!checked); }}
       className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
       style={{
         backgroundColor: checked ? '#FFA16C' : 'rgba(255,255,255,0.1)',
@@ -162,7 +162,7 @@ function PasswordDialog({
             type="password"
             placeholder="パスワード"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => { setPassword(e.target.value); }}
             onKeyDown={(e) => { if (e.key === 'Enter') void handleSubmit() }}
             className="input-dark w-full"
             autoFocus
@@ -172,7 +172,7 @@ function PasswordDialog({
               type="password"
               placeholder="パスワード（確認）"
               value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
+              onChange={(e) => { setConfirm(e.target.value); }}
               onKeyDown={(e) => { if (e.key === 'Enter') void handleSubmit() }}
               className="input-dark w-full"
             />
@@ -407,7 +407,7 @@ export function Settings() {
               <button
                 key={c}
                 type="button"
-                onClick={() => updateSettings({ displayCurrency: c })}
+                onClick={() => { updateSettings({ displayCurrency: c }); }}
                 className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors"
                 style={
                   settings.displayCurrency === c
@@ -430,7 +430,7 @@ export function Settings() {
         >
           <Toggle
             checked={settings.priceAutoRefresh}
-            onChange={(v) => updateSettings({ priceAutoRefresh: v })}
+            onChange={(v) => { updateSettings({ priceAutoRefresh: v }); }}
           />
         </SettingRow>
 
@@ -439,7 +439,7 @@ export function Settings() {
             <select
               value={settings.priceRefreshIntervalMinutes}
               onChange={(e) =>
-                updateSettings({ priceRefreshIntervalMinutes: parseInt(e.target.value, 10) })
+                { updateSettings({ priceRefreshIntervalMinutes: parseInt(e.target.value, 10) }); }
               }
               className="input-dark w-28 py-1.5 text-sm"
             >
@@ -474,7 +474,7 @@ export function Settings() {
                 )}
                 <button
                   type="button"
-                  onClick={() => setShowAlphaKey(!showAlphaKey)}
+                  onClick={() => { setShowAlphaKey(!showAlphaKey); }}
                   className="btn-ghost text-xs"
                 >
                   {showAlphaKey ? '閉じる' : '設定'}
@@ -487,7 +487,7 @@ export function Settings() {
                   type="password"
                   placeholder="APIキーを入力"
                   value={alphaKeyDraft}
-                  onChange={(e) => setAlphaKeyDraft(e.target.value)}
+                  onChange={(e) => { setAlphaKeyDraft(e.target.value); }}
                   className="input-dark flex-1 py-1.5 text-sm"
                 />
                 <button type="button" onClick={saveAlphaKey} className="btn-accent text-xs">
@@ -514,7 +514,7 @@ export function Settings() {
                 )}
                 <button
                   type="button"
-                  onClick={() => setShowJQuantsKey(!showJQuantsKey)}
+                  onClick={() => { setShowJQuantsKey(!showJQuantsKey); }}
                   className="btn-ghost text-xs"
                 >
                   {showJQuantsKey ? '閉じる' : '設定'}
@@ -527,7 +527,7 @@ export function Settings() {
                   type="password"
                   placeholder="リフレッシュトークンを入力"
                   value={jQuantsDraft}
-                  onChange={(e) => setJQuantsDraft(e.target.value)}
+                  onChange={(e) => { setJQuantsDraft(e.target.value); }}
                   className="input-dark flex-1 py-1.5 text-sm"
                 />
                 <button type="button" onClick={saveJQuantsKey} className="btn-accent text-xs">
@@ -568,14 +568,14 @@ export function Settings() {
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => setShowChangePassDialog(true)}
+              onClick={() => { setShowChangePassDialog(true); }}
               className="btn-ghost text-xs"
             >
               パスワードを変更
             </button>
             <button
               type="button"
-              onClick={() => setShowDisableEncDialog(true)}
+              onClick={() => { setShowDisableEncDialog(true); }}
               className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-opacity hover:opacity-80"
               style={{
                 background: 'rgba(239,68,68,0.12)',
@@ -589,7 +589,7 @@ export function Settings() {
         ) : (
           <button
             type="button"
-            onClick={() => setShowEnableEncDialog(true)}
+            onClick={() => { setShowEnableEncDialog(true); }}
             className="btn-accent text-xs"
           >
             暗号化を有効化
@@ -604,7 +604,7 @@ export function Settings() {
             <select
               value={settings.autoLockMinutes}
               onChange={(e) =>
-                updateSettings({ autoLockMinutes: parseInt(e.target.value, 10) })
+                { updateSettings({ autoLockMinutes: parseInt(e.target.value, 10) }); }
               }
               className="input-dark w-24 py-1.5 text-sm"
             >
@@ -656,7 +656,7 @@ export function Settings() {
           >
             <button
               type="button"
-              onClick={() => setShowResetModal(true)}
+              onClick={() => { setShowResetModal(true); }}
               className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-opacity hover:opacity-80"
               style={{
                 background: 'rgba(239,68,68,0.12)',
@@ -685,7 +685,7 @@ export function Settings() {
         title="暗号化を有効化"
         description="パスワードを設定します。紛失するとデータを復元できません。8文字以上で設定してください。"
         onConfirm={handleEnableEncryption}
-        onCancel={() => setShowEnableEncDialog(false)}
+        onCancel={() => { setShowEnableEncDialog(false); }}
         requireConfirm
       />
 
@@ -694,7 +694,7 @@ export function Settings() {
         title="暗号化を無効化"
         description="現在のパスワードを入力して暗号化を無効化します。"
         onConfirm={handleDisableEncryption}
-        onCancel={() => setShowDisableEncDialog(false)}
+        onCancel={() => { setShowDisableEncDialog(false); }}
       />
 
       <PasswordDialog
@@ -702,7 +702,7 @@ export function Settings() {
         title="パスワードを変更"
         description="新しいパスワードを入力してください。変更後は新しいパスワードで再ログインが必要です。"
         onConfirm={handleChangePassword}
-        onCancel={() => setShowChangePassDialog(false)}
+        onCancel={() => { setShowChangePassDialog(false); }}
         requireConfirm
       />
 
@@ -710,7 +710,7 @@ export function Settings() {
         isOpen={showResetModal}
         title="データをリセットしますか？"
         onConfirm={() => void handleReset()}
-        onCancel={() => setShowResetModal(false)}
+        onCancel={() => { setShowResetModal(false); }}
         confirmLabel="すべて削除する"
         confirmVariant="danger"
       >

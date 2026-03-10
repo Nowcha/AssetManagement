@@ -124,7 +124,7 @@ export function AssetList() {
       scope="col"
       className="cursor-pointer select-none transition-colors"
       style={{ textAlign: align }}
-      onClick={() => handleSort(col)}
+      onClick={() => { handleSort(col); }}
       aria-sort={sortKey === col ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
     >
       <span className="hover:text-white transition-colors">
@@ -222,7 +222,7 @@ export function AssetList() {
                       <div className="flex items-center justify-center gap-2">
                         <button
                           type="button"
-                          onClick={() => handleEditClick(asset.id)}
+                          onClick={() => { handleEditClick(asset.id); }}
                           className="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
                           style={{
                             color: '#FFA16C',
@@ -234,7 +234,7 @@ export function AssetList() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDeleteClick(asset)}
+                          onClick={() => { handleDeleteClick(asset); }}
                           className="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
                           style={{
                             color: '#ef4444',

@@ -31,20 +31,20 @@ export const useUiStore = create<UiState>()((set) => ({
   toasts: [],
 
   openModal: (type, payload = null) =>
-    set({ activeModal: type, modalPayload: payload }),
+    { set({ activeModal: type, modalPayload: payload }); },
 
-  closeModal: () => set({ activeModal: null, modalPayload: null }),
+  closeModal: () => { set({ activeModal: null, modalPayload: null }); },
 
   addToast: (toast) =>
-    set((state) => ({
+    { set((state) => ({
       toasts: [
         ...state.toasts,
         { ...toast, id: `${Date.now()}-${Math.random()}` },
       ],
-    })),
+    })); },
 
   removeToast: (id) =>
-    set((state) => ({
+    { set((state) => ({
       toasts: state.toasts.filter((t) => t.id !== id),
-    })),
+    })); },
 }))

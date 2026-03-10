@@ -92,7 +92,7 @@ describe('TransactionForm rendering', () => {
       />,
     )
 
-    const select = screen.getByLabelText(/資産/) as HTMLSelectElement
+    const select = screen.getByLabelText(/資産/)
     expect(select.value).toBe('asset-1')
   })
 
@@ -105,7 +105,7 @@ describe('TransactionForm rendering', () => {
     )
 
     const today = new Date().toISOString().slice(0, 10)
-    const dateInput = screen.getByLabelText(/取引日/) as HTMLInputElement
+    const dateInput = screen.getByLabelText(/取引日/)
     expect(dateInput.value).toBe(today)
   })
 })
