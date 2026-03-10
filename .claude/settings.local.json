@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"D:\\\\Project\\\\13_AssetManagement\" && npm install 2>&1)",
+      "Bash(cd \"D:\\\\Project\\\\13_AssetManagement\" && npm audit 2>&1)",
+      "Bash(cd \"D:\\\\Project\\\\13_AssetManagement\" && npm audit fix 2>&1)",
+      "Bash(cd \"D:\\\\Project\\\\13_AssetManagement\" && npm uninstall vite-plugin-pwa 2>&1)",
+      "Bash(cd \"D:\\\\Project\\\\13_AssetManagement\" && npm test 2>&1)",
+      "Bash(cd \"D:\\\\Project\\\\13_AssetManagement\" && npm run typecheck 2>&1)",
+      "Bash(cd \"D:\\\\Project\\\\13_AssetManagement\" && npm test && npm run typecheck && npm audit 2>&1)",
+      "Bash(cd \"D:/Project/13_AssetManagement\" && npm install @hookform/resolvers)",
+      "Bash(cd \"D:/Project/13_AssetManagement\" && npm test 2>&1)",
+      "Bash(cd \"D:/Project/13_AssetManagement\" && npm run test:coverage 2>&1 | tail -50)",
+      "Bash(cd \"D:/Project/13_AssetManagement\" && npm test 2>&1 | tail -40)",
+      "Bash(cd \"D:/Project/13_AssetManagement\" && npm run test:coverage 2>&1 | tail -35)",
+      "Bash(cd \"D:/Project/13_AssetManagement\" && npm run test:coverage 2>&1 | tail -30)",
+      "Bash(cd \"D:/Project/13_AssetManagement\" && npm run typecheck 2>&1)",
+      "Bash(cd \"D:\\\\Project\\\\13_AssetManagement\" && npm run dev 2>&1)",
+      "Bash(cd \"D:\\\\Project\\\\13_AssetManagement\" && npm test 2>&1 | tail -8 && npm run build 2>&1 | tail -8)",
+      "Bash(cd \"D:/Project/13_AssetManagement\" && node -e \"console.log\\(new Intl.NumberFormat\\('ja-JP', { style: 'currency', currency: 'JPY', maximumFractionDigits: 0 }\\).format\\(100000\\)\\)\")",
+      "Bash(cd \"D:/Project/13_AssetManagement\" && npm run test:coverage 2>&1 | tail -40)",
+      "Bash(cd \"D:/Project/13_AssetManagement\" && npm test 2>&1 | tail -15)",
+      "Bash(cd \"D:\\\\Project\\\\13_AssetManagement\" && npm test 2>&1 | tail -8 && npm run build 2>&1 | tail -6)",
+      "Bash(cd \"D:/Project/13_AssetManagement\" && npm test -- --run --reporter=verbose src/components/transactions/TransactionForm/index.test.tsx 2>&1 | grep -E \"✓|×|FAIL|PASS|Tests\" | head -30)",
+      "Bash(cd \"D:/Project/13_AssetManagement\" && npm test -- --run src/components/transactions/TransactionForm/index.test.tsx 2>&1 | grep -A 30 \"FAIL.*submission\\\\|Expected.*received\"| head -40)",
+      "Bash(cd \"D:/Project/13_AssetManagement\" && npm test -- --run --reporter=verbose src/components/transactions/TransactionForm/index.test.tsx 2>&1 | grep -E \"✓|×|Tests\" | head -20)",
+      "Bash(cd \"D:/Project/13_AssetManagement\" && npm test -- --run src/components/transactions/TransactionForm/index.test.tsx 2>&1 | grep -B5 \"Expected number\\\\|amount\\\\|NaN\" | head -30)",
+      "Bash(cd \"D:/Project/13_AssetManagement\" && npm test -- --run src/components/transactions/TransactionForm/index.test.tsx 2>&1 | grep -B2 -A10 \"Expected number\\\\|alert\\\\|onSubmit\" | head -40)",
+      "Bash(cd \"D:/Project/13_AssetManagement\" && npm test -- --run 2>&1 | tail -20)",
+      "Bash(cd \"D:/Project/13_AssetManagement\" && npm test -- --run 2>&1 | tail -10)",
+      "Bash(cd \"D:/Project/13_AssetManagement\" && npx eslint src/utils/csv.ts src/utils/transactionCalculator.ts src/store/transactionStore.ts src/hooks/useTransactions.ts src/pages/Transactions/index.tsx src/pages/Performance/index.tsx src/components/transactions/TransactionForm/index.tsx src/components/transactions/TransactionList/index.tsx src/components/charts/PerformanceBar/index.tsx src/App.tsx 2>&1)",
+      "Bash(cd \"D:/Project/13_AssetManagement\" && npx eslint src/store/assetStore.ts 2>&1)",
+      "Bash(cd \"D:/Project/13_AssetManagement\" && npx eslint src/components/assets/AssetForm/index.tsx 2>&1)",
+      "Bash(cd \"D:/Project/13_AssetManagement\" && npx eslint src/components/transactions/TransactionList/index.tsx 2>&1 | grep \"error\")",
+      "Bash(cd \"D:/Project/13_AssetManagement\" && npx eslint --fix src/components/transactions/TransactionList/index.tsx src/pages/Performance/index.tsx src/pages/Transactions/index.tsx src/store/transactionStore.ts 2>&1)",
+      "Bash(cd \"D:/Project/13_AssetManagement\" && npx eslint src/components/assets/AssetList/index.tsx 2>&1 | grep \"error\")",
+      "Bash(cd \"D:/Project/13_AssetManagement\" && npx eslint --fix src/components/transactions/TransactionList/index.tsx 2>&1)",
+      "Bash(cd \"D:/Project/13_AssetManagement\" && npx eslint src/utils/csv.ts src/utils/transactionCalculator.ts src/store/transactionStore.ts src/hooks/useTransactions.ts src/pages/Transactions/index.tsx src/pages/Performance/index.tsx src/components/transactions/TransactionForm/index.tsx src/components/transactions/TransactionList/index.tsx src/components/charts/PerformanceBar/index.tsx src/App.tsx 2>&1 | grep \"error\\\\|warning\")",
+      "Bash(cd \"D:/Project/13_AssetManagement\" && npm run build 2>&1 | tail -15 && npm test -- --run 2>&1 | tail -8)"
+    ]
+  }
+}
