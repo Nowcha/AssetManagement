@@ -3,13 +3,11 @@
  *
  * 対応API:
  *   - 仮想通貨: CoinGecko (APIキー不要)
- *   - 国内株・ETF・投資信託: Yahoo Finance Japan (APIキー不要)
- *   - 米国株: Alpha Vantage (ユーザーAPIキー必要)
+ *   - 国内株・ETF・投資信託・米国株: Yahoo Finance 非公式API (APIキー不要)
  *   - 為替: Frankfurter (APIキー不要)
  *
- * レート制限:
- *   - Alpha Vantage 無料プラン: 25req/day, 5req/min
- *   - CoinGecko 無料プラン: ~30req/min
+ * Yahoo Finance のティッカー:
+ *   - 国内株: "7203.T"  米国株: "AAPL"
  */
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useAssetStore } from '@/store/assetStore'
@@ -18,8 +16,7 @@ import { useUiStore } from '@/store/uiStore'
 import { saveAsset } from '@/utils/dbService'
 import { fetchCryptoPrices, CRYPTO_TICKER_TO_ID } from '@/api/coinGecko'
 import { fetchRate } from '@/api/frankfurter'
-import { fetchUsStockPrice } from '@/api/alphaVantage'
-import { fetchJpPrices } from '@/api/yahooFinanceJP'
+import { fetchStockPrice, normalizeJpTicker } from '@/api/yahooFinance'
 import type { Asset } from '@/types/asset.types'
 
 export interface PriceSyncResult {
@@ -31,7 +28,6 @@ export interface PriceSyncResult {
 /** 資産の現在価格をAPIから取得してJPY換算で返す */
 async function fetchPriceJpy(
   asset: Asset,
-  alphaVantageKey: string,
   usdToJpy: number,
 ): Promise<number | null> {
   const ticker = asset.ticker?.trim()
@@ -42,14 +38,13 @@ async function fetchPriceJpy(
       const coinId = CRYPTO_TICKER_TO_ID[ticker.toUpperCase()]
       if (!coinId) return null
       const prices = await fetchCryptoPrices([coinId])
-      const priceJpy = prices[coinId]
-      return priceJpy ?? null
+      return prices[coinId] ?? null
     }
 
     case 'stock_us': {
-      if (!ticker || !alphaVantageKey) return null
-      // Alpha Vantage はUSD建て → JPY換算
-      const priceUsd = await fetchUsStockPrice(ticker, alphaVantageKey)
+      if (!ticker) return null
+      // Yahoo Finance は USD 建て → JPY 換算
+      const priceUsd = await fetchStockPrice(ticker)
       return priceUsd * usdToJpy
     }
 
@@ -57,21 +52,14 @@ async function fetchPriceJpy(
     case 'etf':
     case 'mutual_fund': {
       if (!ticker) return null
-      // Yahoo Finance Japan ティッカーは "7203.T" 形式
-      const yTicker = ticker.includes('.') ? ticker : `${ticker}.T`
-      const prices = await fetchJpPrices([yTicker])
-      return prices[yTicker] ?? null
+      const yTicker = normalizeJpTicker(ticker)
+      return await fetchStockPrice(yTicker)
     }
 
     // 預金・債券・不動産・保険・その他は手動管理
     default:
       return null
   }
-}
-
-/** Alpha Vantage のレート制限対応: 1req/12秒 (5req/min) */
-async function sleepMs(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 export function usePriceSync() {
@@ -104,19 +92,11 @@ export function usePriceSync() {
         // Frankfurter がエラーでもフォールバック値で継続
       }
 
-      const alphaVantageKey = settings.alphaVantageApiKey ?? ''
-
-      // 米国株のみ Alpha Vantage → レート制限対応で逐次処理
-      const usStocks = assets.filter(
-        (a) => a.assetClass === 'stock_us' && a.ticker,
-      )
-      const otherAssets = assets.filter((a) => a.assetClass !== 'stock_us')
-
-      // 米国株以外はすべてまとめて処理（CoinGecko は一括、Yahoo JP は個別だが並列可）
+      // 全資産を並列処理（Yahoo Finance はレート制限が緩やか）
       await Promise.allSettled(
-        otherAssets.map(async (asset) => {
+        assets.map(async (asset) => {
           try {
-            const priceJpy = await fetchPriceJpy(asset, alphaVantageKey, usdToJpy)
+            const priceJpy = await fetchPriceJpy(asset, usdToJpy)
             if (priceJpy === null) return // 対応なし・手動管理
 
             const now = new Date().toISOString()
@@ -139,35 +119,6 @@ export function usePriceSync() {
         }),
       )
 
-      // 米国株: Alpha Vantage 無料プラン 5req/min → 12秒ごとに1件
-      for (const asset of usStocks) {
-        try {
-          const priceJpy = await fetchPriceJpy(asset, alphaVantageKey, usdToJpy)
-          if (priceJpy !== null) {
-            const now = new Date().toISOString()
-            const priceUsd = priceJpy / usdToJpy
-
-            const updated: Partial<Asset> = {
-              currentPrice: priceUsd,
-              currentPriceJpy: priceJpy,
-              currentPriceUpdatedAt: now,
-              updatedAt: now,
-            }
-
-            updateAsset(asset.id, updated)
-            await saveAsset({ ...asset, ...updated }, cryptoKey ?? undefined)
-            updatedCount++
-          }
-        } catch {
-          failedCount++
-        }
-
-        // レート制限対応: 米国株が複数ある場合に間隔を空ける
-        if (usStocks.indexOf(asset) < usStocks.length - 1) {
-          await sleepMs(12_000)
-        }
-      }
-
       const now = new Date().toISOString()
       setLastSyncAt(now)
 
@@ -187,7 +138,7 @@ export function usePriceSync() {
     } finally {
       setIsSyncing(false)
     }
-  }, [isSyncing, lastSyncAt, assets, settings.alphaVantageApiKey, cryptoKey, updateAsset, addToast])
+  }, [isSyncing, lastSyncAt, assets, cryptoKey, updateAsset, addToast])
 
   // 自動更新インターバル
   useEffect(() => {

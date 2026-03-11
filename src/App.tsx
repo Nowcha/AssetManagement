@@ -40,7 +40,7 @@ function AppContent() {
     if (assets.length > 0 && !locked) {
       void initializeSnapshots(assets)
     }
-  }, [assets.length, locked, initializeSnapshots])
+  }, [assets, locked, initializeSnapshots])
 
   return (
     <>

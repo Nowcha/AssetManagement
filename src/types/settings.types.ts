@@ -8,8 +8,6 @@ export interface AppSettings {
   autoLockMinutes: number        // 0 = 無効
   priceAutoRefresh: boolean
   priceRefreshIntervalMinutes: number
-  alphaVantageApiKey?: string    // 暗号化して保存
-  jQuantsRefreshToken?: string   // 暗号化して保存
   lastBackupAt?: string
 }
 

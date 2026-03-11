@@ -39,7 +39,7 @@ export const useUiStore = create<UiState>()((set) => ({
     { set((state) => ({
       toasts: [
         ...state.toasts,
-        { ...toast, id: `${Date.now()}-${Math.random()}` },
+        { ...toast, id: `${Date.now().toString()}-${Math.random().toString()}` },
       ],
     })); },
 

@@ -30,7 +30,7 @@ function buildAsset(id: string, data: AssetFormData, now: string): Asset {
     // in Sprint 4, price sync will handle this. For now use currentPrice directly.
     currentPriceJpy: data.currentPrice,
     note: data.note,
-    tags: data.tags ?? [],
+    tags: data.tags,
     createdAt: now,
     updatedAt: now,
   }

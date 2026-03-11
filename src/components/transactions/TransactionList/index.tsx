@@ -336,7 +336,7 @@ export function TransactionList() {
       <Modal
         isOpen={activeModal === 'transaction-delete'}
         title="取引を削除しますか？"
-        onConfirm={handleDeleteConfirm}
+        onConfirm={() => { void handleDeleteConfirm(); }}
         onCancel={closeModal}
         confirmLabel={isDeleting ? '削除中...' : '削除する'}
         cancelLabel="キャンセル"

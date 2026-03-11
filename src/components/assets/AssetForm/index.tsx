@@ -8,6 +8,14 @@ import type { Resolver } from 'react-hook-form'
 import { assetFormSchema, type AssetFormData } from '@/utils/validators'
 import { ASSET_CLASS_LABELS, ACCOUNT_TYPE_LABELS } from '@/types/asset.types'
 import type { AssetClass, AccountType, CurrencyCode } from '@/types/asset.types'
+import { formatJpy, formatUsd, formatQuantity } from '@/utils/formatters'
+
+function formatAssetAmount(value: number, currency: string): string {
+  if (currency === 'JPY') return formatJpy(value)
+  if (currency === 'USD') return formatUsd(value)
+  const formatted = new Intl.NumberFormat('ja-JP', { maximumFractionDigits: 8 }).format(value)
+  return `${formatted} ${currency}`
+}
 
 const CURRENCY_OPTIONS: { value: CurrencyCode; label: string }[] = [
   { value: 'JPY', label: '日本円 (JPY)' },
@@ -66,6 +74,7 @@ export function AssetForm({ defaultValues, onSubmit, onCancel, isSubmitting = fa
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting: formIsSubmitting },
   } = useForm<AssetFormData, unknown, AssetFormData>({
     // Cast resolver to handle the tags type mismatch between zod inference and explicit type
@@ -87,12 +96,18 @@ export function AssetForm({ defaultValues, onSubmit, onCancel, isSubmitting = fa
 
   const submitting = isSubmitting || formIsSubmitting
 
+  const [watchedQuantity, watchedAcquisitionPrice, watchedCurrentPrice, watchedCurrency] =
+    watch(['quantity', 'acquisitionPrice', 'currentPrice', 'currency'])
+
+  const acquisitionTotal = watchedQuantity * watchedAcquisitionPrice
+  const currentTotal = watchedQuantity * watchedCurrentPrice
+
   const handleFormSubmit = handleSubmit(async (data: AssetFormData) => {
     await onSubmit(data)
   })
 
   return (
-    <form onSubmit={handleFormSubmit} noValidate aria-label="資産登録フォーム">
+    <form onSubmit={(e) => { void handleFormSubmit(e); }} noValidate aria-label="資産登録フォーム">
       <div className="space-y-5">
         {/* Asset name */}
         <FieldWrapper label="資産名" htmlFor="name" error={errors.name?.message} required>
@@ -204,6 +219,29 @@ export function AssetForm({ defaultValues, onSubmit, onCancel, isSubmitting = fa
               className={errors.currentPrice ? inputErrorClass : inputBaseClass}
             />
           </FieldWrapper>
+        </div>
+
+        {/* Computed totals display */}
+        <div className="glass-card rounded-lg p-4 space-y-2">
+          <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: '#868F97', letterSpacing: '0.08em' }}>
+            評価額（自動計算）
+          </p>
+          <div className="flex items-center justify-between text-sm">
+            <span style={{ color: '#868F97' }}>取得総額</span>
+            <span className="font-amount">
+              {formatQuantity(watchedQuantity)} × {formatAssetAmount(watchedAcquisitionPrice, watchedCurrency)}
+              {' = '}
+              <span style={{ color: '#FFA16C' }}>{formatAssetAmount(acquisitionTotal, watchedCurrency)}</span>
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span style={{ color: '#868F97' }}>評価額</span>
+            <span className="font-amount">
+              {formatQuantity(watchedQuantity)} × {formatAssetAmount(watchedCurrentPrice, watchedCurrency)}
+              {' = '}
+              <span style={{ color: '#22c55e' }}>{formatAssetAmount(currentTotal, watchedCurrency)}</span>
+            </span>
+          </div>
         </div>
 
         {/* Note */}

@@ -2,12 +2,14 @@
  * TransactionForm - Dark-styled form for recording buy/sell/dividend transactions
  * Uses React Hook Form + Zod validation
  */
+import { useEffect } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { transactionFormSchema, type TransactionFormData } from '@/utils/validators'
 import { TRANSACTION_TYPE_LABELS } from '@/types/transaction.types'
 import type { TransactionType } from '@/types/transaction.types'
 import { useAssetStore } from '@/store/assetStore'
+import { formatJpy, formatQuantity } from '@/utils/formatters'
 
 export interface TransactionFormProps {
   defaultAssetId?: string
@@ -76,6 +78,7 @@ export function TransactionForm({
     register,
     handleSubmit,
     control,
+    setValue,
     formState: { errors, isSubmitting: formIsSubmitting },
   } = useForm<TransactionFormData>({
     resolver: zodResolver(transactionFormSchema),
@@ -90,6 +93,9 @@ export function TransactionForm({
   const submitting = isSubmitting || formIsSubmitting
   const selectedType = useWatch({ control, name: 'type' })
   const selectedAssetId = useWatch({ control, name: 'assetId' })
+  const watchedQuantity = useWatch({ control, name: 'quantity' })
+  const watchedPrice = useWatch({ control, name: 'price' })
+  const watchedExchangeRate = useWatch({ control, name: 'exchangeRate' })
 
   const showQuantityPrice = QUANTITY_PRICE_TYPES.includes(selectedType)
 
@@ -100,12 +106,25 @@ export function TransactionForm({
     selectedAsset != null &&
     selectedAsset.currency !== 'JPY'
 
+  // Auto-compute amount (JPY) from quantity × price [× exchangeRate] for buy/sell/split
+  const qty = watchedQuantity ?? 0
+  const prc = watchedPrice ?? 0
+  const rate = watchedExchangeRate ?? 0
+  const computedAmount = showExchangeRate && rate > 0
+    ? qty * prc * rate
+    : qty * prc
+
+  useEffect(() => {
+    if (!showQuantityPrice) return
+    setValue('amount', computedAmount, { shouldValidate: false })
+  }, [showQuantityPrice, computedAmount, setValue])
+
   const handleFormSubmit = handleSubmit(async (data: TransactionFormData) => {
     await onSubmit(data)
   })
 
   return (
-    <form onSubmit={handleFormSubmit} noValidate aria-label="取引登録フォーム">
+    <form onSubmit={(e) => { void handleFormSubmit(e); }} noValidate aria-label="取引登録フォーム">
       <div className="space-y-5">
         {/* Asset selection */}
         <FieldWrapper label="資産" htmlFor="assetId" error={errors.assetId?.message} required>
@@ -181,18 +200,41 @@ export function TransactionForm({
           </div>
         )}
 
-        {/* Amount (JPY) */}
-        <FieldWrapper label="金額 (JPY)" htmlFor="amount" error={errors.amount?.message} required>
-          <input
-            id="amount"
-            type="number"
-            step="any"
-            min="0"
-            aria-required="true"
-            {...register('amount', { valueAsNumber: true })}
-            className={errors.amount ? inputErrorClass : inputBaseClass}
-          />
-        </FieldWrapper>
+        {/* Amount (JPY) - auto-computed for buy/sell/split, manual for other types */}
+        {showQuantityPrice ? (
+          <>
+            {/* Hidden registered input keeps the value in sync for form submission */}
+            <input type="hidden" {...register('amount', { valueAsNumber: true })} />
+            {/* Computed display */}
+            <div className="glass-card rounded-lg p-4">
+              <p className="mb-2 text-xs font-medium uppercase tracking-widest" style={{ color: '#868F97', letterSpacing: '0.08em' }}>
+                金額（自動計算）
+              </p>
+              <div className="flex items-center justify-between text-sm">
+                <span style={{ color: '#868F97' }}>
+                  {showExchangeRate
+                    ? `${formatQuantity(qty)} × ${prc.toLocaleString('ja-JP')} × ${rate > 0 ? rate.toLocaleString('ja-JP') : '—'} 円/外貨`
+                    : `${formatQuantity(qty)} × ${prc.toLocaleString('ja-JP')}`}
+                </span>
+                <span className="font-amount text-base" style={{ color: '#FFA16C' }}>
+                  {formatJpy(computedAmount)}
+                </span>
+              </div>
+            </div>
+          </>
+        ) : (
+          <FieldWrapper label="金額 (JPY)" htmlFor="amount" error={errors.amount?.message} required>
+            <input
+              id="amount"
+              type="number"
+              step="any"
+              min="0"
+              aria-required="true"
+              {...register('amount', { valueAsNumber: true })}
+              className={errors.amount ? inputErrorClass : inputBaseClass}
+            />
+          </FieldWrapper>
+        )}
 
         {/* Fee */}
         <FieldWrapper label="手数料 (JPY)" htmlFor="fee" error={errors.fee?.message}>

@@ -148,7 +148,7 @@ describe('AssetForm field error styles', () => {
 
     await waitFor(() => {
       const alerts = screen.getAllByRole('alert')
-      expect(alerts.some((a) => a.textContent?.includes('20文字'))).toBe(true)
+      expect(alerts.some((a) => a.textContent?.includes('20文字') ?? false)).toBe(true)
     })
   })
 })

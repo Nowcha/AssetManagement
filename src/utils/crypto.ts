@@ -106,5 +106,5 @@ function uint8ArrayToBase64(arr: Uint8Array): string {
 
 function base64ToUint8Array(base64: string): Uint8Array {
   const binary = atob(base64)
-  return new Uint8Array([...binary].map((c) => c.charCodeAt(0)))
+  return new Uint8Array(Array.from(binary, (c) => c.charCodeAt(0)))
 }

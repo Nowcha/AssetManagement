@@ -51,9 +51,10 @@ function NumberInput({
   max?: number
   step?: number
 }) {
+  const inputId = `sim-input-${label.replace(/\s/g, '-')}`
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium text-white">
+      <label htmlFor={inputId} className="mb-1 block text-sm font-medium text-white">
         {label}
       </label>
       {description && (
@@ -63,6 +64,7 @@ function NumberInput({
       )}
       <div className="flex items-center gap-2">
         <input
+          id={inputId}
           type="number"
           value={value}
           onChange={(e) => { onChange(parseFloat(e.target.value) || 0); }}
@@ -72,7 +74,7 @@ function NumberInput({
           className="input-dark w-full"
         />
         {suffix && (
-          <span className="flex-shrink-0 text-sm" style={{ color: '#868F97' }}>
+          <span className="flex-shrink-0 text-sm" aria-hidden="true" style={{ color: '#868F97' }}>
             {suffix}
           </span>
         )}
@@ -140,7 +142,6 @@ export function Simulation() {
 
   const applyPreset = (i: number) => {
     const p = PRESETS[i]
-    if (!p) return
     setSelectedPreset(i)
     setParams((prev) => ({
       ...prev,
@@ -229,6 +230,7 @@ export function Simulation() {
                   key={p.label}
                   type="button"
                   onClick={() => { applyPreset(i); }}
+                  aria-pressed={selectedPreset === i}
                   className="rounded-lg px-2.5 py-1 text-xs font-medium transition-colors"
                   style={
                     selectedPreset === i
@@ -356,17 +358,17 @@ export function Simulation() {
               {finalYearValues && (
                 <div className="grid grid-cols-3 gap-3">
                   <StatCard
-                    label={`${params.years}年後 悲観 (10%)`}
+                    label={`${params.years.toString()}年後 悲観 (10%)`}
                     value={formatJpy(finalYearValues.p10)}
                     color="#ef4444"
                   />
                   <StatCard
-                    label={`${params.years}年後 中央値`}
+                    label={`${params.years.toString()}年後 中央値`}
                     value={formatJpy(finalYearValues.p50)}
                     color="#FFA16C"
                   />
                   <StatCard
-                    label={`${params.years}年後 楽観 (90%)`}
+                    label={`${params.years.toString()}年後 楽観 (90%)`}
                     value={formatJpy(finalYearValues.p90)}
                     color="#22c55e"
                   />
@@ -377,7 +379,7 @@ export function Simulation() {
               <div className="glass-card p-5">
                 <p className="mb-1 text-sm font-semibold text-white">資産推移予測</p>
                 <p className="mb-4 text-xs" style={{ color: '#868F97' }}>
-                  緑: 楽観（75%ile / 90%ile）　橙: 中央値（50%ile）　赤: 悲観（25%ile / 10%ile）
+                  緑: 楽観（75%ile / 90%ile） 橙: 中央値（50%ile） 赤: 悲観（25%ile / 10%ile）
                 </p>
                 <SimulationChart result={result} targetAmount={params.targetAmount} />
               </div>

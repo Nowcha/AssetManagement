@@ -118,7 +118,7 @@ export function Reports() {
     return Array.from(map.entries())
       .map(([cls, s]) => ({
         cls,
-        label: ASSET_CLASS_LABELS[cls as keyof typeof ASSET_CLASS_LABELS] ?? cls,
+        label: ASSET_CLASS_LABELS[cls as keyof typeof ASSET_CLASS_LABELS],
         ...s,
         gainRate: s.cost !== 0 ? (s.gain / s.cost) * 100 : 0,
       }))
@@ -176,7 +176,7 @@ export function Reports() {
       </div>
 
       {/* ── 年間損益サマリー ── */}
-      <SectionCard title={`${selectedYear}年 取引サマリー`}>
+      <SectionCard title={`${selectedYear.toString()}年 取引サマリー`}>
         <div className="grid grid-cols-2 gap-px sm:grid-cols-4" style={{ background: 'rgba(255,255,255,0.06)' }}>
           {[
             { label: '買付合計', value: formatJpy(yearlyStats.buyAmount), color: '#60a5fa' },

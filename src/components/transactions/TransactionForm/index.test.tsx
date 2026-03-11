@@ -44,7 +44,8 @@ describe('TransactionForm rendering', () => {
     expect(screen.getByLabelText(/資産/)).toBeInTheDocument()
     expect(screen.getByLabelText(/取引種別/)).toBeInTheDocument()
     expect(screen.getByLabelText(/取引日/)).toBeInTheDocument()
-    expect(screen.getByLabelText(/金額/)).toBeInTheDocument()
+    // For buy type (default), amount is auto-computed and shown as a display, not a labeled input
+    expect(screen.getByText(/金額（自動計算）/)).toBeInTheDocument()
   })
 
   it('renders submit and cancel buttons', () => {
@@ -93,7 +94,7 @@ describe('TransactionForm rendering', () => {
     )
 
     const select = screen.getByLabelText(/資産/)
-    expect(select.value).toBe('asset-1')
+    expect((select as HTMLSelectElement).value).toBe('asset-1')
   })
 
   it('shows date defaulted to today', () => {
@@ -106,7 +107,7 @@ describe('TransactionForm rendering', () => {
 
     const today = new Date().toISOString().slice(0, 10)
     const dateInput = screen.getByLabelText(/取引日/)
-    expect(dateInput.value).toBe(today)
+    expect((dateInput as HTMLInputElement).value).toBe(today)
   })
 })
 
@@ -186,7 +187,7 @@ describe('TransactionForm validation', () => {
     await waitFor(() => {
       const alerts = screen.getAllByRole('alert')
       expect(alerts.length).toBeGreaterThan(0)
-      expect(alerts.some((a) => a.textContent?.includes('資産を選択'))).toBe(true)
+      expect(alerts.some((a) => a.textContent?.includes('資産を選択') ?? false)).toBe(true)
     })
   })
 })

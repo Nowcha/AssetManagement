@@ -57,12 +57,13 @@ function SettingRow({
   )
 }
 
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ checked, onChange, 'aria-label': ariaLabel }: { checked: boolean; onChange: (v: boolean) => void; 'aria-label'?: string }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={ariaLabel}
       onClick={() => { onChange(!checked); }}
       className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
       style={{
@@ -136,7 +137,12 @@ function PasswordDialog({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="pwd-dialog-title"
+    >
       <div
         className="absolute inset-0"
         style={{ backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
@@ -152,13 +158,15 @@ function PasswordDialog({
           boxShadow: '0 25px 50px rgba(0,0,0,0.6)',
         }}
       >
-        <h2 className="mb-2 text-base font-semibold text-white">{title}</h2>
+        <h2 id="pwd-dialog-title" className="mb-2 text-base font-semibold text-white">{title}</h2>
         <p className="mb-4 text-xs" style={{ color: '#868F97' }}>
           {description}
         </p>
 
         <div className="space-y-3">
+          <label htmlFor="pwd-dialog-password" className="sr-only">パスワード</label>
           <input
+            id="pwd-dialog-password"
             type="password"
             placeholder="パスワード"
             value={password}
@@ -166,19 +174,25 @@ function PasswordDialog({
             onKeyDown={(e) => { if (e.key === 'Enter') void handleSubmit() }}
             className="input-dark w-full"
             autoFocus
+            aria-required="true"
           />
           {requireConfirm && (
-            <input
-              type="password"
-              placeholder="パスワード（確認）"
-              value={confirm}
-              onChange={(e) => { setConfirm(e.target.value); }}
-              onKeyDown={(e) => { if (e.key === 'Enter') void handleSubmit() }}
-              className="input-dark w-full"
-            />
+            <>
+              <label htmlFor="pwd-dialog-confirm" className="sr-only">パスワード（確認）</label>
+              <input
+                id="pwd-dialog-confirm"
+                type="password"
+                placeholder="パスワード（確認）"
+                value={confirm}
+                onChange={(e) => { setConfirm(e.target.value); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') void handleSubmit() }}
+                className="input-dark w-full"
+                aria-required="true"
+              />
+            </>
           )}
           {error && (
-            <p className="text-xs" style={{ color: '#ef4444' }}>
+            <p role="alert" className="text-xs" style={{ color: '#ef4444' }}>
               {error}
             </p>
           )}
@@ -217,10 +231,6 @@ export function Settings() {
   const [showDisableEncDialog, setShowDisableEncDialog] = useState(false)
   const [showChangePassDialog, setShowChangePassDialog] = useState(false)
   const [showResetModal, setShowResetModal] = useState(false)
-  const [showAlphaKey, setShowAlphaKey] = useState(false)
-  const [showJQuantsKey, setShowJQuantsKey] = useState(false)
-  const [alphaKeyDraft, setAlphaKeyDraft] = useState(settings.alphaVantageApiKey ?? '')
-  const [jQuantsDraft, setJQuantsDraft] = useState(settings.jQuantsRefreshToken ?? '')
 
   // ---------------------------------------------------------------------------
   // Encryption helpers
@@ -281,22 +291,6 @@ export function Settings() {
     // Re-lock to force unlock with new password
     lock()
     addToast({ type: 'success', message: 'パスワードを変更しました。新しいパスワードで再ログインしてください。' })
-  }
-
-  // ---------------------------------------------------------------------------
-  // API key save
-  // ---------------------------------------------------------------------------
-
-  const saveAlphaKey = () => {
-    updateSettings({ alphaVantageApiKey: alphaKeyDraft.trim() || undefined })
-    addToast({ type: 'success', message: 'Alpha Vantage APIキーを保存しました' })
-    setShowAlphaKey(false)
-  }
-
-  const saveJQuantsKey = () => {
-    updateSettings({ jQuantsRefreshToken: jQuantsDraft.trim() || undefined })
-    addToast({ type: 'success', message: 'J-Quants リフレッシュトークンを保存しました' })
-    setShowJQuantsKey(false)
   }
 
   // ---------------------------------------------------------------------------
@@ -377,8 +371,6 @@ export function Settings() {
         isEncryptionEnabled: false,
         encryptionSaltHex: undefined,
         encryptionKeyVerifier: undefined,
-        alphaVantageApiKey: undefined,
-        jQuantsRefreshToken: undefined,
         lastBackupAt: undefined,
       })
       setShowResetModal(false)
@@ -391,9 +383,6 @@ export function Settings() {
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
-
-  const hasAlphaKey = Boolean(settings.alphaVantageApiKey)
-  const hasJQuantsKey = Boolean(settings.jQuantsRefreshToken)
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -408,6 +397,7 @@ export function Settings() {
                 key={c}
                 type="button"
                 onClick={() => { updateSettings({ displayCurrency: c }); }}
+                aria-pressed={settings.displayCurrency === c}
                 className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors"
                 style={
                   settings.displayCurrency === c
@@ -431,6 +421,7 @@ export function Settings() {
           <Toggle
             checked={settings.priceAutoRefresh}
             onChange={(v) => { updateSettings({ priceAutoRefresh: v }); }}
+            aria-label="価格自動更新"
           />
         </SettingRow>
 
@@ -452,94 +443,8 @@ export function Settings() {
           </SettingRow>
         )}
 
-        <div className="border-t pt-4" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-          <p className="mb-3 text-xs font-medium" style={{ color: '#868F97' }}>
-            APIキー設定
-          </p>
-
-          {/* Alpha Vantage */}
-          <div className="mb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-white">Alpha Vantage</p>
-                <p className="text-xs" style={{ color: '#868F97' }}>
-                  米国株価格取得（無料・25req/日）
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                {hasAlphaKey && (
-                  <span className="text-xs" style={{ color: '#22c55e' }}>
-                    設定済
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => { setShowAlphaKey(!showAlphaKey); }}
-                  className="btn-ghost text-xs"
-                >
-                  {showAlphaKey ? '閉じる' : '設定'}
-                </button>
-              </div>
-            </div>
-            {showAlphaKey && (
-              <div className="mt-2 flex gap-2">
-                <input
-                  type="password"
-                  placeholder="APIキーを入力"
-                  value={alphaKeyDraft}
-                  onChange={(e) => { setAlphaKeyDraft(e.target.value); }}
-                  className="input-dark flex-1 py-1.5 text-sm"
-                />
-                <button type="button" onClick={saveAlphaKey} className="btn-accent text-xs">
-                  保存
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* J-Quants */}
-          <div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-white">J-Quants（JPX公式）</p>
-                <p className="text-xs" style={{ color: '#868F97' }}>
-                  国内株価格取得（無料・要ユーザー登録）
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                {hasJQuantsKey && (
-                  <span className="text-xs" style={{ color: '#22c55e' }}>
-                    設定済
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => { setShowJQuantsKey(!showJQuantsKey); }}
-                  className="btn-ghost text-xs"
-                >
-                  {showJQuantsKey ? '閉じる' : '設定'}
-                </button>
-              </div>
-            </div>
-            {showJQuantsKey && (
-              <div className="mt-2 flex gap-2">
-                <input
-                  type="password"
-                  placeholder="リフレッシュトークンを入力"
-                  value={jQuantsDraft}
-                  onChange={(e) => { setJQuantsDraft(e.target.value); }}
-                  className="input-dark flex-1 py-1.5 text-sm"
-                />
-                <button type="button" onClick={saveJQuantsKey} className="btn-accent text-xs">
-                  保存
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
         <p className="text-xs" style={{ color: '#4B5563' }}>
-          ※ APIキーはIndexedDBに保存されます。共有PCでのご使用はご注意ください。
+          ※ Yahoo Finance 非公式APIを使用します。APIキーの設定は不要です。
         </p>
       </SectionCard>
 

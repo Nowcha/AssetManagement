@@ -28,13 +28,15 @@ const PERIODS: Array<{ key: PeriodKey; label: string; days: number }> = [
   { key: 'ALL', label: 'ALL', days: 0   },
 ]
 
+// eslint-disable-next-line react-refresh/only-export-components -- utility functions used in tests
 export function formatXAxis(dateStr: string): string {
   const date = new Date(dateStr)
   const m = date.getMonth() + 1
   const d = date.getDate()
-  return `${m}/${d}`
+  return `${m.toString()}/${d.toString()}`
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- utility functions used in tests
 export function formatYAxis(value: number): string {
   if (value >= 10000) {
     return `${(value / 10000).toFixed(0)}万`
@@ -56,7 +58,7 @@ export function CustomTooltip({ active, payload }: CustomTooltipProps) {
   if (!active || !payload || payload.length === 0) return null
   const item = payload[0].payload
   const date = new Date(item.recordedAt)
-  const label = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`
+  const label = `${date.getFullYear().toString()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`
   return (
     <div
       style={{

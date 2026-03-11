@@ -125,6 +125,8 @@ export function AssetList() {
       className="cursor-pointer select-none transition-colors"
       style={{ textAlign: align }}
       onClick={() => { handleSort(col); }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort(col); } }}
+      tabIndex={0}
       aria-sort={sortKey === col ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
     >
       <span className="hover:text-white transition-colors">
@@ -258,7 +260,7 @@ export function AssetList() {
       <Modal
         isOpen={activeModal === 'asset-delete'}
         title="資産を削除しますか？"
-        onConfirm={handleDeleteConfirm}
+        onConfirm={() => { void handleDeleteConfirm(); }}
         onCancel={closeModal}
         confirmLabel={isDeleting ? '削除中...' : '削除する'}
         cancelLabel="キャンセル"
