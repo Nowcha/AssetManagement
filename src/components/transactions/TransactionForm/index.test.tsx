@@ -293,8 +293,8 @@ describe('TransactionForm isEditing mode', () => {
       />,
     )
 
-    expect((screen.getByLabelText(/取引種別/) as HTMLSelectElement).value).toBe('sell')
-    expect((screen.getByLabelText(/取引日/) as HTMLInputElement).value).toBe('2024-06-15')
+    expect(screen.getByRole('combobox', { name: /取引種別/ })).toHaveValue('sell')
+    expect(screen.getByDisplayValue('2024-06-15')).toBeInTheDocument()
   })
 })
 
