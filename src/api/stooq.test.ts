@@ -100,8 +100,7 @@ describe('fetchStooqPrice', () => {
     await fetchStooqPrice('9433.T', 'jp')
 
     const calledUrl: string = fetchMock.mock.calls[0][0] as string
-    expect(calledUrl).toContain('corsproxy.io')
-    expect(calledUrl).toContain('stooq.com')
+    expect(calledUrl).toMatch(/^https:\/\/corsproxy\.io\/\?https:\/\/stooq\.com/)
     expect(calledUrl).toContain('9433.jp')
   })
 
@@ -116,7 +115,7 @@ describe('fetchStooqPrice', () => {
     expect(price).toBe(171.5)
 
     const calledUrl: string = fetchMock.mock.calls[0][0] as string
-    expect(calledUrl).toContain('corsproxy.io')
+    expect(calledUrl).toMatch(/^https:\/\/corsproxy\.io\/\?https:\/\/stooq\.com/)
     expect(calledUrl).toContain('AAPL.us')
   })
 })

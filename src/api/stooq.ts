@@ -25,7 +25,7 @@ const STOOQ_BASE = 'https://stooq.com/q/l'
  * corsproxy.io はターゲット URL を ? の後に URL エンコードして渡す形式。
  */
 function withCorsProxy(targetUrl: string): string {
-  return `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`
+  return `https://corsproxy.io/?${targetUrl}`
 }
 
 export type StooqExchange = 'jp' | 'us'
