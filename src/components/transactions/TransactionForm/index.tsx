@@ -355,7 +355,7 @@ export function TransactionForm({
               {...register('amount', { valueAsNumber: true })}
               className={errors.amount ? inputErrorClass : inputBaseClass}
             />
-            <NumericHint value={watchedAmount ?? 0} formatter={formatJpy} />
+            <NumericHint value={watchedAmount} formatter={formatJpy} />
           </FieldWrapper>
         )}
 
