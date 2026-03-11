@@ -1,0 +1,41 @@
+{
+  "name": "AssetManagement - 資産管理",
+  "short_name": "資産管理",
+  "description": "個人金融資産管理アプリ - プライバシーファーストで資産を一元管理",
+  "start_url": "/AssetManagement/",
+  "scope": "/AssetManagement/",
+  "display": "standalone",
+  "background_color": "#090909",
+  "theme_color": "#090909",
+  "lang": "ja",
+  "dir": "ltr",
+  "orientation": "any",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    {
+      "src": "/AssetManagement/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/AssetManagement/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "ダッシュボード",
+      "url": "/AssetManagement/",
+      "description": "ポートフォリオ概要を確認"
+    },
+    {
+      "name": "資産管理",
+      "url": "/AssetManagement/assets",
+      "description": "資産を管理する"
+    }
+  ]
+}

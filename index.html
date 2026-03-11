@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="個人金融資産管理アプリ - プライバシーファーストで資産を一元管理" />
+
+    <!-- PWA -->
+    <meta name="theme-color" content="#090909" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="資産管理" />
+    <link rel="manifest" href="/AssetManagement/manifest.json" />
+    <link rel="apple-touch-icon" href="/AssetManagement/icons/icon-192.png" />
+
+    <!-- Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self';
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      img-src 'self' data:;
+      font-src 'self' https://fonts.gstatic.com;
+      connect-src 'self'
+        https://api.coingecko.com
+        https://api.frankfurter.app
+        https://query1.finance.yahoo.com
+        https://query2.finance.yahoo.com;
+      object-src 'none';
+      base-uri 'self';
+      form-action 'self';
+      worker-src 'self' blob:;
+    " />
+
+    <!-- Noto Sans JP (Google Fonts) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="icon" type="image/svg+xml" href="/AssetManagement/favicon.svg" />
+    <title>AssetManagement - 資産管理</title>
+    <script type="module" crossorigin src="/AssetManagement/assets/index-B3t37xOp.js"></script>
+    <link rel="modulepreload" crossorigin href="/AssetManagement/assets/vendor-react-CgXIeYU4.js">
+    <link rel="modulepreload" crossorigin href="/AssetManagement/assets/vendor-data-BzpBLoiv.js">
+    <link rel="modulepreload" crossorigin href="/AssetManagement/assets/vendor-charts-De0OTjJN.js">
+    <link rel="modulepreload" crossorigin href="/AssetManagement/assets/vendor-form-hkSfCqMo.js">
+    <link rel="stylesheet" crossorigin href="/AssetManagement/assets/index-KloP4f6-.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- Service Worker 登録 -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/AssetManagement/sw.js', {
+            scope: '/AssetManagement/',
+          })
+        })
+      }
+    </script>
+  </body>
+</html>
