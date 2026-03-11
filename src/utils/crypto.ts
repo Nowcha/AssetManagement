@@ -48,7 +48,7 @@ export async function encrypt(
 ): Promise<{ data: string; iv: string }> {
   const enc = new TextEncoder()
   const ivRaw = crypto.getRandomValues(new Uint8Array(IV_LENGTH))
-  const iv = ivRaw.buffer as ArrayBuffer
+  const iv = ivRaw.buffer
 
   const ciphertext = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv },
