@@ -24,8 +24,7 @@
       connect-src 'self'
         https://api.coingecko.com
         https://api.frankfurter.app
-        https://query1.finance.yahoo.com
-        https://query2.finance.yahoo.com;
+        https://stooq.com;
       object-src 'none';
       base-uri 'self';
       form-action 'self';
@@ -51,15 +50,7 @@
   </head>
   <body>
     <div id="root"></div>
-    <!-- Service Worker 登録 -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/AssetManagement/sw.js', {
-            scope: '/AssetManagement/',
-          })
-        })
-      }
-    </script>
+    <!-- Service Worker 登録（外部ファイル化で CSP 'unsafe-inline' 不要） -->
+    <script src="/AssetManagement/sw-register.js"></script>
   </body>
 </html>
