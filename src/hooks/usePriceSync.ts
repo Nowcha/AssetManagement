@@ -2,12 +2,15 @@
  * usePriceSync - 外部API連携による資産価格同期フック
  *
  * 対応API:
- *   - 仮想通貨: CoinGecko (APIキー不要)
- *   - 国内株・ETF・投資信託・米国株: Yahoo Finance 非公式API (APIキー不要)
- *   - 為替: Frankfurter (APIキー不要)
+ *   - 仮想通貨: CoinGecko (APIキー不要・CORS対応)
+ *   - 国内株・ETF・米国株: Stooq (APIキー不要・CORS対応)
+ *   - 為替: Frankfurter (APIキー不要・CORS対応)
  *
- * Yahoo Finance のティッカー:
- *   - 国内株: "7203.T"  米国株: "AAPL"
+ * Stooq のティッカー形式（自動変換・ユーザー入力はそのままでOK）:
+ *   - 国内株・ETF: 証券コード4桁 → "9433.jp"  (".T" 付きでも自動変換)
+ *   - 米国株:      シンボル      → "aapl.us"
+ *
+ * 注: Yahoo Finance q1 は GitHub Pages からの CORS を拒否するため Stooq に切替済み。
  */
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useAssetStore } from '@/store/assetStore'
@@ -16,7 +19,7 @@ import { useUiStore } from '@/store/uiStore'
 import { saveAsset } from '@/utils/dbService'
 import { fetchCryptoPrices, CRYPTO_TICKER_TO_ID } from '@/api/coinGecko'
 import { fetchRate } from '@/api/frankfurter'
-import { fetchStockPrice, normalizeJpTicker } from '@/api/yahooFinance'
+import { fetchStooqPrice } from '@/api/stooq'
 import type { Asset, AssetClass } from '@/types/asset.types'
 
 export interface PriceSyncResult {
@@ -53,8 +56,8 @@ async function fetchPriceJpy(
 
     case 'stock_us': {
       if (!ticker) return null
-      // Yahoo Finance は USD 建て → JPY 換算
-      const priceUsd = await fetchStockPrice(ticker)
+      // Stooq は USD 建て → JPY 換算
+      const priceUsd = await fetchStooqPrice(ticker, 'us')
       return priceUsd * usdToJpy
     }
 
@@ -62,8 +65,8 @@ async function fetchPriceJpy(
     case 'etf':
     case 'mutual_fund': {
       if (!ticker) return null
-      const yTicker = normalizeJpTicker(ticker)
-      return await fetchStockPrice(yTicker)
+      // Stooq は JPY 建てでそのまま返す
+      return await fetchStooqPrice(ticker, 'jp')
     }
 
     // 預金・債券・不動産・保険・その他は手動管理
