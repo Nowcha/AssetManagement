@@ -367,7 +367,7 @@ export function TransactionForm({
             step="any"
             min="0"
             placeholder="任意"
-            {...register('fee', { valueAsNumber: true })}
+            {...register('fee', { setValueAs: (v: string) => v === '' ? undefined : Number(v) })}
             className={errors.fee ? inputErrorClass : inputBaseClass}
           />
           <NumericHint value={watchedFee ?? 0} formatter={formatJpy} />
@@ -386,7 +386,7 @@ export function TransactionForm({
               step="any"
               min="0"
               placeholder="任意 — 例: 150.25"
-              {...register('exchangeRate', { valueAsNumber: true })}
+              {...register('exchangeRate', { setValueAs: (v: string) => v === '' ? undefined : Number(v) })}
               className={errors.exchangeRate ? inputErrorClass : inputBaseClass}
             />
           </FieldWrapper>

@@ -73,14 +73,8 @@ export const transactionFormSchema = z.object({
   price: z.number().nonnegative('0以上の数値を入力してください').optional(),
   amount: z.number({ invalid_type_error: '金額を入力してください' })
     .nonnegative('0以上の数値を入力してください'),
-  fee: z.preprocess(
-    (v) => (typeof v === 'number' && isNaN(v) ? undefined : v),
-    z.number().nonnegative().optional(),
-  ),
-  exchangeRate: z.preprocess(
-    (v) => (typeof v === 'number' && isNaN(v) ? undefined : v),
-    z.number().positive().optional(),
-  ),
+  fee: z.number().nonnegative().optional(),
+  exchangeRate: z.number().positive().optional(),
   note: z.string().max(500).optional(),
 })
 
