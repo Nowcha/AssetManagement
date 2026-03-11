@@ -44,8 +44,8 @@ describe('calcMovingAveragePrice', () => {
 })
 
 describe('calcAssetSummary', () => {
-  it('含み益を正しく計算する', () => {
-    const asset = makeAsset({ quantity: 100, acquisitionPrice: 1000, currentPriceJpy: 1200 })
+  it('含み益を正しく計算する（JPY資産）', () => {
+    const asset = makeAsset({ quantity: 100, acquisitionPrice: 1000, currentPrice: 1200, currentPriceJpy: 1200 })
     const summary = calcAssetSummary(asset)
     expect(summary.totalValue).toBe(120000)
     expect(summary.totalCost).toBe(100000)
@@ -53,8 +53,8 @@ describe('calcAssetSummary', () => {
     expect(summary.unrealizedGainRate).toBe(20)
   })
 
-  it('含み損を正しく計算する', () => {
-    const asset = makeAsset({ quantity: 100, acquisitionPrice: 1000, currentPriceJpy: 800 })
+  it('含み損を正しく計算する（JPY資産）', () => {
+    const asset = makeAsset({ quantity: 100, acquisitionPrice: 1000, currentPrice: 800, currentPriceJpy: 800 })
     const summary = calcAssetSummary(asset)
     expect(summary.unrealizedGain).toBe(-20000)
     expect(summary.unrealizedGainRate).toBe(-20)
@@ -64,6 +64,59 @@ describe('calcAssetSummary', () => {
     const asset = makeAsset({ quantity: 0, acquisitionPrice: 0, currentPriceJpy: 1000 })
     const summary = calcAssetSummary(asset)
     expect(summary.unrealizedGainRate).toBe(0)
+  })
+
+  it('USD建て資産の取得コストを現在の為替レートでJPY換算する', () => {
+    // 取得単価 100 USD、現在価格 200 USD、為替レート 150 JPY/USD（シンプルな整数値）
+    // 評価額:  10 × 200 × 150 = 300,000 JPY
+    // 取得コスト: 10 × 100 × 150 = 150,000 JPY（USD → JPY換算必須）
+    // 損益: 300,000 - 150,000 = 150,000 JPY (+100%)
+    const asset = makeAsset({
+      currency: 'USD',
+      quantity: 10,
+      acquisitionPrice: 100,
+      currentPrice: 200,
+      currentPriceJpy: 30000,  // 200 × 150 JPY/USD
+    })
+    const summary = calcAssetSummary(asset)
+
+    expect(summary.totalValue).toBe(300000)
+    expect(summary.totalCost).toBe(150000)  // 10 × 100 × (30000/200) = 10 × 100 × 150
+    expect(summary.unrealizedGain).toBe(150000)
+    expect(summary.unrealizedGainRate).toBe(100)
+  })
+
+  it('USD建て資産の損益率は為替レートに依存しない（外貨ベースの損益率と一致する）', () => {
+    // 損益率は (現在価格 - 取得単価) / 取得単価 × 100
+    // 為替レートが変わっても損益率は変わらない
+    const asset = makeAsset({
+      currency: 'USD',
+      quantity: 100,
+      acquisitionPrice: 100,   // 100 USD
+      currentPrice: 150,       // 150 USD
+      currentPriceJpy: 22500,  // 150 × 150 JPY/USD
+    })
+    const summary = calcAssetSummary(asset)
+    // 損益率は 50%（150/100 - 1 = 0.5）
+    expect(summary.unrealizedGainRate).toBeCloseTo(50, 5)
+  })
+
+  it('currentPriceが0の場合は除算エラーを起こさずfallbackする', () => {
+    // 価格未取得の USD 資産 (currentPrice=0, currentPriceJpy=0)
+    // 0除算を防ぐため acquisitionPrice をそのまま totalCost に使う
+    const asset = makeAsset({
+      currency: 'USD',
+      quantity: 10,
+      acquisitionPrice: 100,
+      currentPrice: 0,
+      currentPriceJpy: 0,
+    })
+    const summary = calcAssetSummary(asset)
+    // totalValue = 10 × 0 = 0, totalCost = 10 × 100 = 1000
+    expect(summary.totalValue).toBe(0)
+    expect(summary.totalCost).toBe(1000)
+    // unrealizedGain = 0 - 1000 = -1000（価格未取得なので表示上は意味のない値）
+    expect(summary.unrealizedGain).toBe(-1000)
   })
 })
 

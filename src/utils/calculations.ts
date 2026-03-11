@@ -25,10 +25,22 @@ export function calcMovingAveragePrice(
 
 /**
  * 個別資産のサマリーを計算
+ *
+ * 外貨建て資産（USD等）は acquisitionPrice が外貨建てのため、
+ * currentPrice / currentPriceJpy から算出した現在の為替レートで JPY 換算する。
+ * （現在レートで換算するのは国内証券会社の一般的な表示方法と同じ）
  */
 export function calcAssetSummary(asset: Asset): AssetSummary {
   const totalValue = asset.quantity * asset.currentPriceJpy
-  const totalCost = asset.quantity * asset.acquisitionPrice
+
+  // 外貨建て資産の取得単価を JPY 換算する
+  // 現在価格（外貨）と現在価格（JPY）の比から為替レートを逆算
+  const acquisitionPriceJpy =
+    asset.currency === 'JPY' || asset.currentPrice <= 0
+      ? asset.acquisitionPrice
+      : asset.acquisitionPrice * (asset.currentPriceJpy / asset.currentPrice)
+
+  const totalCost = asset.quantity * acquisitionPriceJpy
   const unrealizedGain = totalValue - totalCost
   const unrealizedGainRate = totalCost !== 0 ? (unrealizedGain / totalCost) * 100 : 0
 
