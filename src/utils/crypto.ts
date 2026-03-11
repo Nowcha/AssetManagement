@@ -10,7 +10,9 @@ const IV_LENGTH = 12    // bytes (AES-GCM推奨)
 
 /** ランダムなソルトを生成してBase64で返す */
 export function generateSalt(): string {
-  const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH))
+  const buf = new ArrayBuffer(SALT_LENGTH)
+  const salt = new Uint8Array(buf)
+  crypto.getRandomValues(salt)
   return uint8ArrayToBase64(salt)
 }
 
@@ -30,7 +32,7 @@ export async function deriveKey(password: string, saltBase64: string): Promise<C
   return crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
-      salt: salt.buffer as ArrayBuffer,
+      salt,
       iterations: PBKDF2_ITERATIONS,
       hash: 'SHA-256',
     },
@@ -47,8 +49,9 @@ export async function encrypt(
   key: CryptoKey,
 ): Promise<{ data: string; iv: string }> {
   const enc = new TextEncoder()
-  const ivRaw = crypto.getRandomValues(new Uint8Array(IV_LENGTH))
-  const iv = ivRaw.buffer
+  const ivBuf = new ArrayBuffer(IV_LENGTH)
+  const iv = new Uint8Array(ivBuf)
+  crypto.getRandomValues(iv)
 
   const ciphertext = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv },
@@ -58,7 +61,7 @@ export async function encrypt(
 
   return {
     data: uint8ArrayToBase64(new Uint8Array(ciphertext)),
-    iv: uint8ArrayToBase64(ivRaw),
+    iv: uint8ArrayToBase64(iv),
   }
 }
 
@@ -68,13 +71,13 @@ export async function decrypt(
   ivBase64: string,
   key: CryptoKey,
 ): Promise<string> {
-  const iv = base64ToUint8Array(ivBase64).buffer as ArrayBuffer
+  const iv = base64ToUint8Array(ivBase64)
   const ciphertext = base64ToUint8Array(dataBase64)
 
   const plaintext = await crypto.subtle.decrypt(
     { name: 'AES-GCM', iv },
     key,
-    ciphertext.buffer as ArrayBuffer,
+    ciphertext,
   )
 
   return new TextDecoder().decode(plaintext)
@@ -102,16 +105,24 @@ export async function verifyPassword(
 // --- ユーティリティ ---
 
 function uint8ArrayToBase64(arr: Uint8Array): string {
-  return btoa(String.fromCharCode(...arr))
+  let binary = ''
+  for (let i = 0; i < arr.length; i++) {
+    binary += String.fromCharCode(arr[i])
+  }
+  return btoa(binary)
 }
 
-/** Base64文字列をUint8Arrayに変換する。バッファはArrayBufferを保証する */
-function base64ToUint8Array(base64: string): Uint8Array & { buffer: ArrayBuffer } {
+/**
+ * Base64文字列をUint8Array<ArrayBuffer>に変換する。
+ * new ArrayBuffer() で明示的にバッファを確保することで
+ * Node.js Web Crypto API との互換性を保証する。
+ */
+function base64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
   const binary = atob(base64)
   const buf = new ArrayBuffer(binary.length)
   const arr = new Uint8Array(buf)
   for (let i = 0; i < binary.length; i++) {
     arr[i] = binary.charCodeAt(i)
   }
-  return arr as Uint8Array & { buffer: ArrayBuffer }
+  return arr
 }
