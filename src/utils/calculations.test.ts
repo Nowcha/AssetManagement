@@ -66,44 +66,70 @@ describe('calcAssetSummary', () => {
     expect(summary.unrealizedGainRate).toBe(0)
   })
 
-  it('USD建て資産の取得コストを現在の為替レートでJPY換算する', () => {
-    // 取得単価 100 USD、現在価格 200 USD、為替レート 150 JPY/USD（シンプルな整数値）
-    // 評価額:  10 × 200 × 150 = 300,000 JPY
-    // 取得コスト: 10 × 100 × 150 = 150,000 JPY（USD → JPY換算必須）
-    // 損益: 300,000 - 150,000 = 150,000 JPY (+100%)
+  it('acquisitionPriceJpyが設定済みの場合、取引時の為替レートで取得コストを計算する', () => {
+    // 取得時: 66.5 USD × 155 JPY/USD = 10,307.5 JPY/株
+    // 現在:   77.88 USD × 160 JPY/USD = 12,460.8 JPY/株（為替が変動）
+    // 取得コスト: 10 × 10,307.5 = 103,075 JPY（取引時レート）
+    // 評価額:     10 × 12,460.8 = 124,608 JPY（現在レート）
+    const asset = makeAsset({
+      currency: 'USD',
+      quantity: 10,
+      acquisitionPrice: 66.5,
+      acquisitionPriceJpy: 66.5 * 155,  // 10,307.5 JPY（取引時レート 155）
+      currentPrice: 77.88,
+      currentPriceJpy: Math.round(77.88 * 160),  // 12,461 JPY（現在レート 160）
+    })
+    const summary = calcAssetSummary(asset)
+
+    expect(summary.totalValue).toBe(10 * Math.round(77.88 * 160))
+    expect(summary.totalCost).toBeCloseTo(10 * 66.5 * 155, 5)
+    // 損益 = 評価額 - 取得コスト（為替差損益も含む）
+    expect(summary.unrealizedGain).toBeCloseTo(
+      10 * Math.round(77.88 * 160) - 10 * 66.5 * 155,
+      5,
+    )
+  })
+
+  it('acquisitionPriceJpyが未設定のUSD資産は現在レートでフォールバック計算する', () => {
+    // 手動登録など acquisitionPriceJpy がない場合は現在レートで換算
     const asset = makeAsset({
       currency: 'USD',
       quantity: 10,
       acquisitionPrice: 100,
+      // acquisitionPriceJpy: undefined（未設定）
       currentPrice: 200,
       currentPriceJpy: 30000,  // 200 × 150 JPY/USD
     })
     const summary = calcAssetSummary(asset)
 
+    // currentPrice/currentPriceJpy から逆算した為替レート 150 で換算
     expect(summary.totalValue).toBe(300000)
-    expect(summary.totalCost).toBe(150000)  // 10 × 100 × (30000/200) = 10 × 100 × 150
+    expect(summary.totalCost).toBe(150000)  // 10 × 100 × 150
     expect(summary.unrealizedGain).toBe(150000)
     expect(summary.unrealizedGainRate).toBe(100)
   })
 
-  it('USD建て資産の損益率は為替レートに依存しない（外貨ベースの損益率と一致する）', () => {
-    // 損益率は (現在価格 - 取得単価) / 取得単価 × 100
-    // 為替レートが変わっても損益率は変わらない
+  it('acquisitionPriceJpyがあると、為替レートが変動しても損益率に影響する', () => {
+    // 取得時レート 155、現在レート 160（円安）
+    // 評価益 = 株価上昇益 + 為替差益の両方が含まれる
+    const acquisitionPriceJpy = 100 * 155  // 15,500
+    const currentPriceJpy = 100 * 160      // 16,000（同じ USD 価格でも円安で JPY 評価額増加）
     const asset = makeAsset({
       currency: 'USD',
-      quantity: 100,
-      acquisitionPrice: 100,   // 100 USD
-      currentPrice: 150,       // 150 USD
-      currentPriceJpy: 22500,  // 150 × 150 JPY/USD
+      quantity: 1,
+      acquisitionPrice: 100,
+      acquisitionPriceJpy,
+      currentPrice: 100,
+      currentPriceJpy,
     })
     const summary = calcAssetSummary(asset)
-    // 損益率は 50%（150/100 - 1 = 0.5）
-    expect(summary.unrealizedGainRate).toBeCloseTo(50, 5)
+    // 損益 = 16,000 - 15,500 = 500（為替差益のみ）
+    expect(summary.unrealizedGain).toBe(500)
+    expect(summary.unrealizedGainRate).toBeCloseTo((500 / 15500) * 100, 5)
   })
 
   it('currentPriceが0の場合は除算エラーを起こさずfallbackする', () => {
-    // 価格未取得の USD 資産 (currentPrice=0, currentPriceJpy=0)
-    // 0除算を防ぐため acquisitionPrice をそのまま totalCost に使う
+    // 価格未取得の USD 資産 (currentPrice=0, currentPriceJpy=0, acquisitionPriceJpy未設定)
     const asset = makeAsset({
       currency: 'USD',
       quantity: 10,
@@ -112,10 +138,8 @@ describe('calcAssetSummary', () => {
       currentPriceJpy: 0,
     })
     const summary = calcAssetSummary(asset)
-    // totalValue = 10 × 0 = 0, totalCost = 10 × 100 = 1000
     expect(summary.totalValue).toBe(0)
-    expect(summary.totalCost).toBe(1000)
-    // unrealizedGain = 0 - 1000 = -1000（価格未取得なので表示上は意味のない値）
+    expect(summary.totalCost).toBe(1000)  // acquisitionPrice そのまま（0除算回避）
     expect(summary.unrealizedGain).toBe(-1000)
   })
 })

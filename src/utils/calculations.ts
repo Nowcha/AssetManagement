@@ -26,21 +26,28 @@ export function calcMovingAveragePrice(
 /**
  * 個別資産のサマリーを計算
  *
- * 外貨建て資産（USD等）は acquisitionPrice が外貨建てのため、
- * currentPrice / currentPriceJpy から算出した現在の為替レートで JPY 換算する。
- * （現在レートで換算するのは国内証券会社の一般的な表示方法と同じ）
+ * 取得コストの JPY 換算は以下の優先順位で決定する:
+ *   1. asset.acquisitionPriceJpy が設定済み → 取引時の為替レートで換算した正確な値を使う
+ *   2. 未設定かつ JPY 建て資産 → acquisitionPrice をそのまま使う
+ *   3. 未設定かつ外貨建て資産 → 現在レートで換算（手動登録時のフォールバック）
+ *
+ * 評価額（currentPriceJpy）は価格同期時の為替レートで換算されており、
+ * 取得コストとは独立したレートを使う正確な損益計算になっている。
  */
 export function calcAssetSummary(asset: Asset): AssetSummary {
   const totalValue = asset.quantity * asset.currentPriceJpy
 
-  // 外貨建て資産の取得単価を JPY 換算する
-  // 現在価格（外貨）と現在価格（JPY）の比から為替レートを逆算
-  const acquisitionPriceJpy =
-    asset.currency === 'JPY' || asset.currentPrice <= 0
-      ? asset.acquisitionPrice
-      : asset.acquisitionPrice * (asset.currentPriceJpy / asset.currentPrice)
+  // Priority 1: use purchase-time exchange rate stored in acquisitionPriceJpy
+  // Priority 2: JPY asset — no conversion needed
+  // Priority 3: foreign asset without historical rate — fall back to current rate
+  const resolvedAcquisitionPriceJpy =
+    asset.acquisitionPriceJpy !== undefined
+      ? asset.acquisitionPriceJpy
+      : asset.currency === 'JPY' || asset.currentPrice <= 0
+        ? asset.acquisitionPrice
+        : asset.acquisitionPrice * (asset.currentPriceJpy / asset.currentPrice)
 
-  const totalCost = asset.quantity * acquisitionPriceJpy
+  const totalCost = asset.quantity * resolvedAcquisitionPriceJpy
   const unrealizedGain = totalValue - totalCost
   const unrealizedGainRate = totalCost !== 0 ? (unrealizedGain / totalCost) * 100 : 0
 

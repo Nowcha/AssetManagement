@@ -84,6 +84,34 @@ describe('applyBuyTransaction', () => {
     expect(result.currentPriceJpy).toBe(15000) // 100 * 150
   })
 
+  it('sets acquisitionPriceJpy using the purchase-time exchange rate', () => {
+    // First buy: 0 shares → 10 shares @ 100 USD, rate 150 JPY/USD
+    const asset = makeAsset({ currency: 'USD', quantity: 0, acquisitionPrice: 0 })
+    const tx = makeBuyTx({ price: 100, quantity: 10 })
+    const result = applyBuyTransaction(asset, tx, 150)
+    // acquisitionPriceJpy = 100 * 150 = 15,000 JPY/share
+    expect(result.acquisitionPriceJpy).toBe(15000)
+  })
+
+  it('calculates moving average acquisitionPriceJpy across multiple buys at different rates', () => {
+    // First buy: 10 shares @ 100 USD, rate 150 → 15,000 JPY/share
+    const asset1 = makeAsset({ currency: 'USD', quantity: 10, acquisitionPrice: 100, acquisitionPriceJpy: 15000 })
+    // Second buy: 10 shares @ 100 USD, rate 160 → 16,000 JPY/share
+    const tx2 = makeBuyTx({ price: 100, quantity: 10 })
+    const result = applyBuyTransaction(asset1, tx2, 160)
+    // Moving average: (10 * 15,000 + 10 * 16,000) / 20 = 15,500 JPY/share
+    expect(result.acquisitionPriceJpy).toBe(15500)
+  })
+
+  it('distinguishes acquisitionPriceJpy from acquisitionPrice when rate changes', () => {
+    // Verifies that JPY cost uses purchase-time rate, not current rate
+    const asset = makeAsset({ currency: 'USD', quantity: 0, acquisitionPrice: 0 })
+    const tx = makeBuyTx({ price: 66.5, quantity: 10 })
+    const result = applyBuyTransaction(asset, tx, 155) // purchase-time rate: 155
+    expect(result.acquisitionPrice).toBeCloseTo(66.5)           // USD
+    expect(result.acquisitionPriceJpy).toBeCloseTo(66.5 * 155)  // JPY at purchase rate
+  })
+
   it('does not change currentPriceJpy when buy price is 0', () => {
     const asset = makeAsset({ currentPriceJpy: 1200 })
     const tx = makeBuyTx({ price: 0, quantity: 10 })
@@ -168,6 +196,18 @@ describe('applySplitTransaction', () => {
     const asset = makeAsset({ acquisitionPrice: 1000 })
     const result = applySplitTransaction(asset, 2)
     expect(result.acquisitionPrice).toBe(500)
+  })
+
+  it('also divides acquisitionPriceJpy by the split ratio when set', () => {
+    const asset = makeAsset({ acquisitionPrice: 1000, acquisitionPriceJpy: 150000 })
+    const result = applySplitTransaction(asset, 2)
+    expect(result.acquisitionPriceJpy).toBe(75000)
+  })
+
+  it('leaves acquisitionPriceJpy undefined when not previously set', () => {
+    const asset = makeAsset({ acquisitionPrice: 1000 }) // no acquisitionPriceJpy
+    const result = applySplitTransaction(asset, 2)
+    expect(result.acquisitionPriceJpy).toBeUndefined()
   })
 
   it('handles non-integer split ratios (e.g. 3-for-2)', () => {

@@ -36,6 +36,7 @@ export interface Asset {
   currency: CurrencyCode
   quantity: number               // 保有数量
   acquisitionPrice: number       // 移動平均取得単価（取引通貨建て）
+  acquisitionPriceJpy?: number   // 移動平均取得単価（JPY換算、取引時の為替レート使用）
   currentPrice: number           // 現在価格（取引通貨建て）
   currentPriceJpy: number        // 現在価格（JPY換算）
   currentPriceUpdatedAt?: string // ISO8601

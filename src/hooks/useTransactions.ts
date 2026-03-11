@@ -176,10 +176,13 @@ export function useTransactions() {
             ...originalAsset,
             quantity: 0,
             acquisitionPrice: 0,
+            acquisitionPriceJpy: 0,
           }
 
           const recalculated = remainingTxs.reduce((acc: Asset, tx: Transaction) => {
             if (tx.type === 'buy' && tx.quantity != null && tx.price != null) {
+              const exRate = tx.exchangeRate ?? 1
+              const buyPriceJpy = tx.price * exRate
               const newQty = acc.quantity + tx.quantity
               const newAvg = calcMovingAveragePrice(
                 acc.quantity,
@@ -187,7 +190,13 @@ export function useTransactions() {
                 tx.quantity,
                 tx.price,
               )
-              return { ...acc, quantity: newQty, acquisitionPrice: newAvg }
+              const newAvgJpy = calcMovingAveragePrice(
+                acc.quantity,
+                acc.acquisitionPriceJpy ?? 0,
+                tx.quantity,
+                buyPriceJpy,
+              )
+              return { ...acc, quantity: newQty, acquisitionPrice: newAvg, acquisitionPriceJpy: newAvgJpy }
             } else if (tx.type === 'sell' && tx.quantity != null) {
               return { ...acc, quantity: Math.max(0, acc.quantity - tx.quantity) }
             } else if (tx.type === 'split' && tx.quantity != null) {
@@ -195,6 +204,10 @@ export function useTransactions() {
                 ...acc,
                 quantity: acc.quantity * tx.quantity,
                 acquisitionPrice: acc.quantity > 0 ? acc.acquisitionPrice / tx.quantity : 0,
+                acquisitionPriceJpy:
+                  acc.acquisitionPriceJpy !== undefined && acc.quantity > 0
+                    ? acc.acquisitionPriceJpy / tx.quantity
+                    : acc.acquisitionPriceJpy,
               }
             }
             return acc
@@ -254,15 +267,23 @@ export function useTransactions() {
       const originalAsset = currentAssets.find((a) => a.id === assetId)
 
       if (originalAsset) {
-        const resetAsset: Asset = { ...originalAsset, quantity: 0, acquisitionPrice: 0 }
+        const resetAsset: Asset = { ...originalAsset, quantity: 0, acquisitionPrice: 0, acquisitionPriceJpy: 0 }
 
         const recalculated = txsToReplay.reduce((acc: Asset, tx: Transaction) => {
           if (tx.type === 'buy' && tx.quantity != null && tx.price != null) {
+            const exRate = tx.exchangeRate ?? 1
+            const buyPriceJpy = tx.price * exRate
             const newQty = acc.quantity + tx.quantity
             const newAvg = calcMovingAveragePrice(
               acc.quantity, acc.acquisitionPrice, tx.quantity, tx.price,
             )
-            return { ...acc, quantity: newQty, acquisitionPrice: newAvg }
+            const newAvgJpy = calcMovingAveragePrice(
+              acc.quantity,
+              acc.acquisitionPriceJpy ?? 0,
+              tx.quantity,
+              buyPriceJpy,
+            )
+            return { ...acc, quantity: newQty, acquisitionPrice: newAvg, acquisitionPriceJpy: newAvgJpy }
           } else if (tx.type === 'sell' && tx.quantity != null) {
             return { ...acc, quantity: Math.max(0, acc.quantity - tx.quantity) }
           } else if (tx.type === 'split' && tx.quantity != null) {
@@ -270,6 +291,10 @@ export function useTransactions() {
               ...acc,
               quantity: acc.quantity * tx.quantity,
               acquisitionPrice: acc.quantity > 0 ? acc.acquisitionPrice / tx.quantity : 0,
+              acquisitionPriceJpy:
+                acc.acquisitionPriceJpy !== undefined && acc.quantity > 0
+                  ? acc.acquisitionPriceJpy / tx.quantity
+                  : acc.acquisitionPriceJpy,
             }
           }
           return acc
