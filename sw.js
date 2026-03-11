@@ -2,7 +2,7 @@
  * AssetManagement Service Worker
  * キャッシュファースト戦略でオフライン対応
  */
-const CACHE_NAME = 'asset-mgmt-v1'
+const CACHE_NAME = 'asset-mgmt-v2'
 
 // App Shellとして事前キャッシュするリソース
 const PRECACHE_URLS = [
@@ -37,16 +37,10 @@ self.addEventListener('fetch', (event) => {
   const { request } = event
   const url = new URL(request.url)
 
-  // 外部APIリクエストはキャッシュしない（常にネットワーク）
-  const isExternalApi =
-    url.hostname.endsWith('coingecko.com') ||
-    url.hostname.endsWith('frankfurter.app') ||
-    url.hostname.endsWith('alphavantage.co') ||
-    url.hostname.endsWith('finance.yahoo.com') ||
-    url.hostname.endsWith('jquants.com')
-
-  if (isExternalApi) {
-    return // ブラウザデフォルトに任せる
+  // 外部オリジンへのリクエストはキャッシュせずブラウザに委ねる
+  // （API ホストのリスト管理不要・新しいAPIを追加しても自動対応）
+  if (url.origin !== self.location.origin) {
+    return
   }
 
   // ナビゲーションリクエスト（HTML page）→ index.html で SPA ルーティング
