@@ -1,7 +1,7 @@
 /**
  * Transactions page - nested routes for listing and recording transactions
  */
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
+import { Routes, Route, useNavigate, useLocation, useParams, Link } from 'react-router-dom'
 import { TransactionList } from '@/components/transactions/TransactionList'
 import { TransactionForm } from '@/components/transactions/TransactionForm'
 import { useTransactions } from '@/hooks/useTransactions'
@@ -62,6 +62,70 @@ function TransactionNewPage() {
   )
 }
 
+function TransactionEditPage() {
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const { transactions } = useTransactionStore()
+  const { updateTransactionAndRecalculateAsset } = useTransactions()
+
+  const tx = transactions.find((t) => t.id === id)
+
+  if (!tx) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <p style={{ color: '#868F97' }}>取引が見つかりません</p>
+        <Link
+          to="/transactions"
+          className="mt-4 text-sm hover:underline"
+          style={{ color: '#FFA16C' }}
+        >
+          取引一覧に戻る
+        </Link>
+      </div>
+    )
+  }
+
+  const handleSubmit = async (data: Parameters<typeof updateTransactionAndRecalculateAsset>[1]) => {
+    await updateTransactionAndRecalculateAsset(tx.id, data)
+    navigate('/transactions')
+  }
+
+  return (
+    <div className="animate-fade-in">
+      <div className="mb-6 flex items-center gap-3">
+        <Link
+          to="/transactions"
+          className="text-sm transition-colors hover:text-white"
+          style={{ color: '#868F97' }}
+          aria-label="取引一覧に戻る"
+        >
+          ← 一覧に戻る
+        </Link>
+        <span style={{ color: 'rgba(255,255,255,0.1)' }}>|</span>
+        <h2 className="text-xl font-semibold text-white">取引を編集</h2>
+      </div>
+      <div className="glass-card p-6">
+        <TransactionForm
+          defaultValues={{
+            assetId: tx.assetId,
+            type: tx.type,
+            date: tx.date,
+            quantity: tx.quantity,
+            price: tx.price,
+            amount: tx.amount,
+            fee: tx.fee,
+            exchangeRate: tx.exchangeRate,
+            note: tx.note ?? '',
+          }}
+          isEditing
+          onSubmit={handleSubmit}
+          onCancel={() => { navigate('/transactions'); }}
+        />
+      </div>
+    </div>
+  )
+}
+
 export function Transactions() {
   const location = useLocation()
 
@@ -72,6 +136,7 @@ export function Transactions() {
     <Routes>
       <Route index element={<TransactionListPage />} />
       <Route path="new" element={<TransactionNewPage />} />
+      <Route path=":id/edit" element={<TransactionEditPage />} />
     </Routes>
   )
 }

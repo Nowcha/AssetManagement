@@ -25,7 +25,7 @@ function generateId(): string {
 }
 
 export function useTransactions() {
-  const { transactions, setTransactions, addTransaction, removeTransaction } = useTransactionStore()
+  const { transactions, setTransactions, addTransaction, updateTransaction: storeUpdateTransaction, removeTransaction } = useTransactionStore()
   const { updateAsset } = useAssetStore()
   const { addToast } = useUiStore()
   const [isLoading, setIsLoading] = useState(false)
@@ -214,11 +214,86 @@ export function useTransactions() {
     }
   }, [removeTransaction, updateAsset, addToast])
 
+  /**
+   * Update an existing transaction and recalculate the associated asset
+   * by replaying all transactions for that asset from scratch.
+   */
+  const updateTransactionAndRecalculateAsset = useCallback(async (
+    txId: string,
+    data: TransactionFormData,
+  ): Promise<void> => {
+    const existingTx = useTransactionStore.getState().transactions.find((t) => t.id === txId)
+    if (!existingTx) return
+
+    const now = new Date().toISOString()
+    const updatedTx: Transaction = {
+      ...existingTx,
+      type: data.type,
+      date: data.date,
+      quantity: data.quantity,
+      price: data.price,
+      amount: data.amount,
+      fee: data.fee,
+      exchangeRate: data.exchangeRate,
+      note: data.note,
+      updatedAt: now,
+    }
+
+    try {
+      await saveTransaction(updatedTx)
+      storeUpdateTransaction(txId, updatedTx)
+
+      // Recalculate asset by replaying all transactions (including updated one)
+      const assetId = existingTx.assetId
+      const allTxs = await loadTransactionsByAsset(assetId)
+      const txsToReplay = allTxs
+        .map((tx) => (tx.id === txId ? updatedTx : tx))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+
+      const currentAssets = useAssetStore.getState().assets
+      const originalAsset = currentAssets.find((a) => a.id === assetId)
+
+      if (originalAsset) {
+        const resetAsset: Asset = { ...originalAsset, quantity: 0, acquisitionPrice: 0 }
+
+        const recalculated = txsToReplay.reduce((acc: Asset, tx: Transaction) => {
+          if (tx.type === 'buy' && tx.quantity != null && tx.price != null) {
+            const newQty = acc.quantity + tx.quantity
+            const newAvg = calcMovingAveragePrice(
+              acc.quantity, acc.acquisitionPrice, tx.quantity, tx.price,
+            )
+            return { ...acc, quantity: newQty, acquisitionPrice: newAvg }
+          } else if (tx.type === 'sell' && tx.quantity != null) {
+            return { ...acc, quantity: Math.max(0, acc.quantity - tx.quantity) }
+          } else if (tx.type === 'split' && tx.quantity != null) {
+            return {
+              ...acc,
+              quantity: acc.quantity * tx.quantity,
+              acquisitionPrice: acc.quantity > 0 ? acc.acquisitionPrice / tx.quantity : 0,
+            }
+          }
+          return acc
+        }, resetAsset)
+
+        const finalAsset: Asset = { ...recalculated, updatedAt: now }
+        await saveAsset(finalAsset)
+        updateAsset(assetId, finalAsset)
+      }
+
+      addToast({ type: 'success', message: '取引を更新しました' })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '取引の更新に失敗しました'
+      addToast({ type: 'error', message })
+      throw err
+    }
+  }, [storeUpdateTransaction, updateAsset, addToast])
+
   return {
     transactions,
     isLoading,
     loadTransactions,
     addTransactionAndUpdateAsset,
+    updateTransactionAndRecalculateAsset,
     removeTransactionAndUpdateAsset,
   }
 }

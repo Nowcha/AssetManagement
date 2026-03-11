@@ -1,9 +1,10 @@
 /**
- * TransactionForm - Dark-styled form for recording buy/sell/dividend transactions.
- * Supports inline new-asset creation: select "＋ 新規資産として記録" to create an asset
- * from the first purchase without having to pre-register it.
- * Uses React Hook Form + Zod validation with shouldUnregister: true so that hidden
- * sections (new-asset fields, quantity/price) are cleanly removed from form state.
+ * TransactionForm - Dark-styled form for recording/editing buy/sell/dividend transactions.
+ * - Supports inline new-asset creation via "＋ 新規資産として記録".
+ * - Accepts defaultValues for editing existing transactions (isEditing=true hides the new-asset option).
+ * - Shows comma-formatted helper text under numeric inputs.
+ * - Exchange rate and fee are optional.
+ * Uses React Hook Form + Zod validation with shouldUnregister: true.
  */
 import { useEffect } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
@@ -16,7 +17,12 @@ import { useAssetStore } from '@/store/assetStore'
 import { formatJpy, formatQuantity } from '@/utils/formatters'
 
 export interface TransactionFormProps {
+  /** Pre-populate form for editing an existing transaction */
+  defaultValues?: Partial<TransactionFormData>
+  /** Shorthand to pre-select an asset (ignored when defaultValues.assetId is set) */
   defaultAssetId?: string
+  /** When true, hides the "新規資産として記録" option */
+  isEditing?: boolean
   onSubmit: (data: TransactionFormData) => Promise<void>
   onCancel: () => void
   isSubmitting?: boolean
@@ -55,6 +61,16 @@ function FieldWrapper({ label, htmlFor, error, required, children }: FieldWrappe
   )
 }
 
+/** Small right-aligned formatted value hint shown below a number input */
+function NumericHint({ value, formatter }: { value: number; formatter: (v: number) => string }) {
+  if (!value || isNaN(value)) return null
+  return (
+    <p className="mt-1 text-right text-xs" style={{ color: '#868F97' }}>
+      {formatter(value)}
+    </p>
+  )
+}
+
 const inputBaseClass = 'input-dark'
 const inputErrorClass = 'input-dark input-dark-error'
 
@@ -69,7 +85,9 @@ const QUANTITY_PRICE_TYPES: TransactionType[] = ['buy', 'sell', 'split']
 const FOREIGN_CURRENCY_TYPES: TransactionType[] = ['buy', 'sell']
 
 export function TransactionForm({
+  defaultValues,
   defaultAssetId,
+  isEditing = false,
   onSubmit,
   onCancel,
   isSubmitting = false,
@@ -88,10 +106,15 @@ export function TransactionForm({
     resolver: zodResolver(transactionFormSchema),
     shouldUnregister: true,
     defaultValues: {
-      assetId: defaultAssetId ?? '',
-      type: 'buy',
-      date: today,
-      amount: 0,
+      assetId: defaultValues?.assetId ?? defaultAssetId ?? '',
+      type: defaultValues?.type ?? 'buy',
+      date: defaultValues?.date ?? today,
+      amount: defaultValues?.amount ?? 0,
+      quantity: defaultValues?.quantity,
+      price: defaultValues?.price,
+      fee: defaultValues?.fee,
+      exchangeRate: defaultValues?.exchangeRate,
+      note: defaultValues?.note ?? '',
     },
   })
 
@@ -101,6 +124,8 @@ export function TransactionForm({
   const watchedQuantity = useWatch({ control, name: 'quantity' })
   const watchedPrice = useWatch({ control, name: 'price' })
   const watchedExchangeRate = useWatch({ control, name: 'exchangeRate' })
+  const watchedAmount = useWatch({ control, name: 'amount' })
+  const watchedFee = useWatch({ control, name: 'fee' })
   const watchedNewCurrency = useWatch({ control, name: 'newAssetInfo.currency' })
 
   const isNewAsset = selectedAssetId === NEW_ASSET_SENTINEL
@@ -146,7 +171,9 @@ export function TransactionForm({
             className={errors.assetId ? inputErrorClass : inputBaseClass}
           >
             <option value="">-- 資産を選択 --</option>
-            <option value={NEW_ASSET_SENTINEL}>＋ 新規資産として記録</option>
+            {!isEditing && (
+              <option value={NEW_ASSET_SENTINEL}>＋ 新規資産として記録</option>
+            )}
             {assets.map((asset) => (
               <option key={asset.id} value={asset.id}>
                 {asset.name}
@@ -277,6 +304,7 @@ export function TransactionForm({
                 {...register('quantity', { valueAsNumber: true })}
                 className={errors.quantity ? inputErrorClass : inputBaseClass}
               />
+              <NumericHint value={qty} formatter={(v) => formatQuantity(v)} />
             </FieldWrapper>
 
             <FieldWrapper label="単価" htmlFor="price" error={errors.price?.message} required>
@@ -289,6 +317,7 @@ export function TransactionForm({
                 {...register('price', { valueAsNumber: true })}
                 className={errors.price ? inputErrorClass : inputBaseClass}
               />
+              <NumericHint value={prc} formatter={(v) => formatQuantity(v, 2)} />
             </FieldWrapper>
           </div>
         )}
@@ -326,6 +355,7 @@ export function TransactionForm({
               {...register('amount', { valueAsNumber: true })}
               className={errors.amount ? inputErrorClass : inputBaseClass}
             />
+            <NumericHint value={watchedAmount ?? 0} formatter={formatJpy} />
           </FieldWrapper>
         )}
 
@@ -340,9 +370,10 @@ export function TransactionForm({
             {...register('fee', { valueAsNumber: true })}
             className={errors.fee ? inputErrorClass : inputBaseClass}
           />
+          <NumericHint value={watchedFee ?? 0} formatter={formatJpy} />
         </FieldWrapper>
 
-        {/* Exchange rate (shown only for foreign currency buy/sell) */}
+        {/* Exchange rate (shown only for foreign currency buy/sell) — optional */}
         {showExchangeRate && (
           <FieldWrapper
             label="為替レート (円/外貨)"
@@ -354,7 +385,7 @@ export function TransactionForm({
               type="number"
               step="any"
               min="0"
-              placeholder="例: 150.25"
+              placeholder="任意 — 例: 150.25"
               {...register('exchangeRate', { valueAsNumber: true })}
               className={errors.exchangeRate ? inputErrorClass : inputBaseClass}
             />
@@ -389,7 +420,7 @@ export function TransactionForm({
           className="btn-accent"
           aria-busy={submitting}
         >
-          {submitting ? '記録中...' : '取引を記録'}
+          {submitting ? '記録中...' : isEditing ? '取引を更新' : '取引を記録'}
         </button>
       </div>
     </form>

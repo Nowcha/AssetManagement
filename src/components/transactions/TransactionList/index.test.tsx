@@ -4,6 +4,7 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import userEvent from '@testing-library/user-event'
 import { TransactionList } from './index'
 import { useTransactionStore } from '@/store/transactionStore'
@@ -54,7 +55,7 @@ beforeEach(() => {
 
 describe('TransactionList - empty state', () => {
   it('shows empty state message when no transactions', () => {
-    render(<TransactionList />)
+    render(<MemoryRouter><TransactionList /></MemoryRouter>)
     expect(screen.getByText(/取引が記録されていません/)).toBeInTheDocument()
   })
 })
@@ -71,26 +72,26 @@ describe('TransactionList - with transactions', () => {
   })
 
   it('renders the transaction table', () => {
-    render(<TransactionList />)
+    render(<MemoryRouter><TransactionList /></MemoryRouter>)
     expect(screen.getByRole('table', { name: '取引履歴一覧' })).toBeInTheDocument()
   })
 
   it('displays all transactions by default', () => {
-    render(<TransactionList />)
+    render(<MemoryRouter><TransactionList /></MemoryRouter>)
     // All 3 transactions should have delete buttons
     const deleteButtons = screen.getAllByRole('button', { name: '取引を削除' })
     expect(deleteButtons).toHaveLength(3)
   })
 
   it('shows asset name in table rows', () => {
-    render(<TransactionList />)
+    render(<MemoryRouter><TransactionList /></MemoryRouter>)
     // Asset name should appear multiple times (once per transaction)
     const assetNames = screen.getAllByText('テスト株式')
     expect(assetNames.length).toBeGreaterThan(0)
   })
 
   it('displays transaction type badges', () => {
-    render(<TransactionList />)
+    render(<MemoryRouter><TransactionList /></MemoryRouter>)
     // Transaction types should appear as badge text in the table
     // (getAllByText handles multiple elements)
     const buyBadges = screen.getAllByText('買付')
@@ -119,7 +120,7 @@ describe('TransactionList - filtering', () => {
 
   it('filters by asset', async () => {
     const user = userEvent.setup()
-    render(<TransactionList />)
+    render(<MemoryRouter><TransactionList /></MemoryRouter>)
 
     await user.selectOptions(screen.getByLabelText('資産フィルター'), 'asset-2')
 
@@ -129,7 +130,7 @@ describe('TransactionList - filtering', () => {
 
   it('filters by transaction type', async () => {
     const user = userEvent.setup()
-    render(<TransactionList />)
+    render(<MemoryRouter><TransactionList /></MemoryRouter>)
 
     await user.selectOptions(screen.getByLabelText('取引種別フィルター'), 'buy')
 
@@ -139,7 +140,7 @@ describe('TransactionList - filtering', () => {
 
   it('shows no results message when filter matches nothing', async () => {
     const user = userEvent.setup()
-    render(<TransactionList />)
+    render(<MemoryRouter><TransactionList /></MemoryRouter>)
 
     await user.selectOptions(screen.getByLabelText('取引種別フィルター'), 'withdrawal')
 
@@ -156,7 +157,7 @@ describe('TransactionList - delete interaction', () => {
 
   it('opens delete confirmation modal on delete button click', async () => {
     const user = userEvent.setup()
-    render(<TransactionList />)
+    render(<MemoryRouter><TransactionList /></MemoryRouter>)
 
     await user.click(screen.getByRole('button', { name: '取引を削除' }))
 
@@ -178,12 +179,12 @@ describe('TransactionList - realized gain summary', () => {
   })
 
   it('renders the realized gain summary section', () => {
-    render(<TransactionList />)
+    render(<MemoryRouter><TransactionList /></MemoryRouter>)
     expect(screen.getByText('確定損益サマリー')).toBeInTheDocument()
   })
 
   it('shows period tab buttons', () => {
-    render(<TransactionList />)
+    render(<MemoryRouter><TransactionList /></MemoryRouter>)
     expect(screen.getByRole('button', { name: '今年' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '昨年' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '全期間' })).toBeInTheDocument()
@@ -191,7 +192,7 @@ describe('TransactionList - realized gain summary', () => {
 
   it('switches between period tabs', async () => {
     const user = userEvent.setup()
-    render(<TransactionList />)
+    render(<MemoryRouter><TransactionList /></MemoryRouter>)
 
     await user.click(screen.getByRole('button', { name: '昨年' }))
 

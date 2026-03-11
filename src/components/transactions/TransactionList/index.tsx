@@ -2,6 +2,7 @@
  * TransactionList - Filterable transaction history table with realized gain summary
  */
 import { useState, useMemo, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTransactionStore } from '@/store/transactionStore'
 import { useAssetStore } from '@/store/assetStore'
 import { useUiStore } from '@/store/uiStore'
@@ -81,6 +82,7 @@ function filterByPeriod(transactions: Transaction[], period: PeriodFilter): Tran
 }
 
 export function TransactionList() {
+  const navigate = useNavigate()
   const { transactions } = useTransactionStore()
   const { assets } = useAssetStore()
   const { openModal, closeModal, activeModal, modalPayload } = useUiStore()
@@ -271,7 +273,19 @@ export function TransactionList() {
                       {tx.note ?? ''}
                     </td>
                     <td>
-                      <div className="flex items-center justify-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => { navigate(`/transactions/${tx.id}/edit`); }}
+                          className="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
+                          style={{
+                            color: '#FFA16C',
+                            background: 'rgba(255,161,108,0.08)',
+                          }}
+                          aria-label="取引を編集"
+                        >
+                          編集
+                        </button>
                         <button
                           type="button"
                           onClick={() => { handleDeleteClick(tx); }}
