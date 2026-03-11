@@ -71,6 +71,17 @@ describe('TransactionForm rendering', () => {
     expect(screen.getByText('テスト株式 (TEST)')).toBeInTheDocument()
   })
 
+  it('shows "新規資産として記録" option in the dropdown', () => {
+    render(
+      <TransactionForm
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('＋ 新規資産として記録')).toBeInTheDocument()
+  })
+
   it('shows quantity and price fields for buy type by default', () => {
     render(
       <TransactionForm
@@ -108,6 +119,61 @@ describe('TransactionForm rendering', () => {
     const today = new Date().toISOString().slice(0, 10)
     const dateInput = screen.getByLabelText(/取引日/)
     expect((dateInput as HTMLInputElement).value).toBe(today)
+  })
+})
+
+describe('TransactionForm new asset mode', () => {
+  it('shows new asset fields when "新規資産として記録" is selected', async () => {
+    const user = userEvent.setup()
+    render(
+      <TransactionForm
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    await user.selectOptions(screen.getByLabelText(/資産/), '__new__')
+    expect(screen.getByText('新規資産情報')).toBeInTheDocument()
+    expect(screen.getByLabelText(/資産名/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/資産クラス/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/口座種別/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/通貨/)).toBeInTheDocument()
+  })
+
+  it('hides new asset fields when switching back to an existing asset', async () => {
+    const user = userEvent.setup()
+    render(
+      <TransactionForm
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    // Use the select by its id to avoid ambiguity with "資産名" / "資産クラス" labels
+    const assetSelect = screen.getByRole('combobox', { name: /^資産$/ })
+    await user.selectOptions(assetSelect, '__new__')
+    expect(screen.getByText('新規資産情報')).toBeInTheDocument()
+
+    await user.selectOptions(assetSelect, 'asset-1')
+    expect(screen.queryByText('新規資産情報')).not.toBeInTheDocument()
+  })
+
+  it('shows validation error when new asset name is empty on submit', async () => {
+    const user = userEvent.setup()
+    render(
+      <TransactionForm
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    await user.selectOptions(screen.getByLabelText(/資産/), '__new__')
+    await user.click(screen.getByRole('button', { name: '取引を記録' }))
+
+    await waitFor(() => {
+      const alerts = screen.getAllByRole('alert')
+      expect(alerts.some((a) => a.textContent?.includes('資産名を入力してください') ?? false)).toBe(true)
+    })
   })
 })
 
@@ -167,6 +233,21 @@ describe('TransactionForm type-dependent fields', () => {
     )
 
     expect(screen.queryByLabelText(/為替レート/)).not.toBeInTheDocument()
+  })
+
+  it('shows exchange rate when new asset mode selects USD currency', async () => {
+    const user = userEvent.setup()
+    render(
+      <TransactionForm
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    await user.selectOptions(screen.getByLabelText(/資産/), '__new__')
+    await user.selectOptions(screen.getByLabelText(/通貨/), 'USD')
+
+    expect(screen.getByLabelText(/為替レート/)).toBeInTheDocument()
   })
 })
 

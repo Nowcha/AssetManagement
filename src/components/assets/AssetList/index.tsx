@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAssetStore } from '@/store/assetStore'
 import { useUiStore } from '@/store/uiStore'
 import { useAssets } from '@/hooks/useAssets'
+import { usePriceSync, isSyncable } from '@/hooks/usePriceSync'
 import { Modal } from '@/components/common/Modal'
 import { calcAssetSummary } from '@/utils/calculations'
 import { formatJpy, formatQuantity, formatGainRate } from '@/utils/formatters'
@@ -58,6 +59,7 @@ export function AssetList() {
   const { assets } = useAssetStore()
   const { openModal, closeModal, activeModal, modalPayload } = useUiStore()
   const { removeAsset } = useAssets()
+  const { syncSingleAsset, syncingAssetIds } = usePriceSync()
 
   const [sortKey, setSortKey] = useState<SortKey>('name')
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc')
@@ -222,6 +224,22 @@ export function AssetList() {
                     </td>
                     <td>
                       <div className="flex items-center justify-center gap-2">
+                        {isSyncable(asset) && (
+                          <button
+                            type="button"
+                            onClick={() => { void syncSingleAsset(asset.id); }}
+                            disabled={syncingAssetIds.has(asset.id)}
+                            className="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
+                            style={{
+                              color: '#60a5fa',
+                              background: 'rgba(96,165,250,0.08)',
+                              opacity: syncingAssetIds.has(asset.id) ? 0.6 : 1,
+                            }}
+                            aria-label={`${asset.name}の価格を更新`}
+                          >
+                            {syncingAssetIds.has(asset.id) ? '更新中' : '更新'}
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => { handleEditClick(asset.id); }}

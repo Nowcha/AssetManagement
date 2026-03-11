@@ -15,6 +15,7 @@ import {
 import { saveAsset } from '@/utils/dbService'
 import { applyBuyTransaction, applySellTransaction, applySplitTransaction } from '@/utils/transactionCalculator'
 import { calcMovingAveragePrice } from '@/utils/calculations'
+import { NEW_ASSET_SENTINEL } from '@/utils/validators'
 import type { TransactionFormData } from '@/utils/validators'
 import type { Transaction } from '@/types/transaction.types'
 import type { Asset } from '@/types/asset.types'
@@ -47,14 +48,55 @@ export function useTransactions() {
 
   /**
    * Add a new transaction and update the associated asset's quantity/price.
+   * When data.assetId === NEW_ASSET_SENTINEL, a new Asset is created first using
+   * data.newAssetInfo, and the transaction is linked to the newly created asset.
    */
   const addTransactionAndUpdateAsset = useCallback(async (data: TransactionFormData): Promise<void> => {
+    let resolvedAssetId = data.assetId
+
+    // Auto-create asset when the user chose "新規資産として記録"
+    if (data.assetId === NEW_ASSET_SENTINEL) {
+      if (!data.newAssetInfo) {
+        addToast({ type: 'error', message: '新規資産情報が不足しています' })
+        return
+      }
+
+      const newAssetId = generateId()
+      const now = new Date().toISOString()
+      const newAsset: Asset = {
+        id: newAssetId,
+        name: data.newAssetInfo.name,
+        ticker: data.newAssetInfo.ticker,
+        assetClass: data.newAssetInfo.assetClass,
+        accountType: data.newAssetInfo.accountType,
+        currency: data.newAssetInfo.currency,
+        quantity: 0,
+        acquisitionPrice: 0,
+        currentPrice: data.price ?? 0,
+        currentPriceJpy: data.price ?? 0,
+        note: data.newAssetInfo.note,
+        tags: [],
+        createdAt: now,
+        updatedAt: now,
+      }
+
+      try {
+        await saveAsset(newAsset)
+        useAssetStore.getState().addAsset(newAsset)
+        resolvedAssetId = newAssetId
+      } catch (err) {
+        const message = err instanceof Error ? err.message : '資産の作成に失敗しました'
+        addToast({ type: 'error', message })
+        throw err
+      }
+    }
+
     const id = generateId()
     const now = new Date().toISOString()
 
     const tx: Transaction = {
       id,
-      assetId: data.assetId,
+      assetId: resolvedAssetId,
       type: data.type,
       date: data.date,
       quantity: data.quantity,
@@ -67,9 +109,9 @@ export function useTransactions() {
       updatedAt: now,
     }
 
-    // Find the associated asset from the store
+    // Find the associated asset from the store (may be the one just created above)
     const currentAssets = useAssetStore.getState().assets
-    const asset = currentAssets.find((a) => a.id === data.assetId)
+    const asset = currentAssets.find((a) => a.id === resolvedAssetId)
 
     try {
       await saveTransaction(tx)
@@ -85,11 +127,9 @@ export function useTransactions() {
         } else if (data.type === 'sell') {
           updatedAsset = applySellTransaction(asset, data)
         } else if (data.type === 'split') {
-          // For split, quantity field holds the split ratio
           const splitRatio = data.quantity ?? 1
           updatedAsset = applySplitTransaction(asset, splitRatio)
         }
-        // dividend, deposit, withdrawal, transfer, fee: asset unchanged
 
         if (updatedAsset) {
           await saveAsset(updatedAsset)

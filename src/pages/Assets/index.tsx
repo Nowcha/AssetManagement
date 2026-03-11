@@ -8,21 +8,45 @@
 import { Routes, Route, useNavigate, useParams, Link } from 'react-router-dom'
 import { useAssetStore } from '@/store/assetStore'
 import { useAssets } from '@/hooks/useAssets'
+import { usePriceSync } from '@/hooks/usePriceSync'
 import { AssetList } from '@/components/assets/AssetList'
 import { AssetForm } from '@/components/assets/AssetForm'
+import { formatDateTime } from '@/utils/formatters'
 import type { AssetFormData } from '@/utils/validators'
 
 // --- Sub-pages ---
 
 function AssetListPage() {
+  const { assets } = useAssetStore()
+  const { isSyncing, lastSyncAt, syncPrices } = usePriceSync()
+
   return (
     <div className="animate-fade-in">
       <div className="mb-5 flex items-center justify-between">
         <h2 className="text-xl font-semibold text-white">資産管理</h2>
-        <Link to="/assets/new" className="btn-accent">
-          + 資産を追加
-        </Link>
+        <div className="flex items-center gap-3">
+          {assets.length > 0 && (
+            <button
+              type="button"
+              onClick={() => { void syncPrices(); }}
+              disabled={isSyncing}
+              className="btn-ghost text-xs"
+              style={{ opacity: isSyncing ? 0.6 : 1 }}
+              aria-label="全資産の価格を更新"
+            >
+              {isSyncing ? '同期中...' : '価格を更新'}
+            </button>
+          )}
+          <Link to="/assets/new" className="btn-accent">
+            + 資産を追加
+          </Link>
+        </div>
       </div>
+      {lastSyncAt && (
+        <p className="mb-4 text-xs" style={{ color: '#4B5563' }}>
+          最終同期: {formatDateTime(lastSyncAt)}
+        </p>
+      )}
       <AssetList />
     </div>
   )

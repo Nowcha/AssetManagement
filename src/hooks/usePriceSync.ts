@@ -17,12 +17,22 @@ import { saveAsset } from '@/utils/dbService'
 import { fetchCryptoPrices, CRYPTO_TICKER_TO_ID } from '@/api/coinGecko'
 import { fetchRate } from '@/api/frankfurter'
 import { fetchStockPrice, normalizeJpTicker } from '@/api/yahooFinance'
-import type { Asset } from '@/types/asset.types'
+import type { Asset, AssetClass } from '@/types/asset.types'
 
 export interface PriceSyncResult {
   updatedCount: number
   failedCount: number
   lastSyncAt: string
+}
+
+/** Asset classes that support automatic price fetching */
+export const AUTO_SYNC_ASSET_CLASSES: AssetClass[] = [
+  'stock_jp', 'stock_us', 'etf', 'mutual_fund', 'crypto',
+]
+
+/** Returns true if this asset's price can be fetched automatically */
+export function isSyncable(asset: Asset): boolean {
+  return AUTO_SYNC_ASSET_CLASSES.includes(asset.assetClass) && !!asset.ticker?.trim()
 }
 
 /** 資産の現在価格をAPIから取得してJPY換算で返す */
@@ -62,8 +72,18 @@ async function fetchPriceJpy(
   }
 }
 
+/** USD/JPY レートを取得（失敗時はフォールバック値を返す） */
+async function getUsdToJpy(): Promise<number> {
+  try {
+    return await fetchRate('USD', 'JPY')
+  } catch {
+    return 150
+  }
+}
+
 export function usePriceSync() {
   const [isSyncing, setIsSyncing] = useState(false)
+  const [syncingAssetIds, setSyncingAssetIds] = useState<Set<string>>(new Set())
   const [lastSyncAt, setLastSyncAt] = useState<string | null>(null)
   const [syncError, setSyncError] = useState<string | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -72,6 +92,27 @@ export function usePriceSync() {
   const { settings, cryptoKey } = useSettingsStore()
   const { addToast } = useUiStore()
 
+  /** 取得した価格をストアとDBに反映する共通処理 */
+  const applyPrice = useCallback(async (
+    asset: Asset,
+    priceJpy: number,
+    usdToJpy: number,
+  ): Promise<void> => {
+    const now = new Date().toISOString()
+    const priceInCurrency = asset.currency === 'USD' ? priceJpy / usdToJpy : priceJpy
+    const updated: Partial<Asset> = {
+      currentPrice: priceInCurrency,
+      currentPriceJpy: priceJpy,
+      currentPriceUpdatedAt: now,
+      updatedAt: now,
+    }
+    updateAsset(asset.id, updated)
+    await saveAsset({ ...asset, ...updated }, cryptoKey ?? undefined)
+  }, [updateAsset, cryptoKey])
+
+  /**
+   * 全資産の価格を一括同期する。
+   */
   const syncPrices = useCallback(async (): Promise<PriceSyncResult> => {
     if (isSyncing) {
       return { updatedCount: 0, failedCount: 0, lastSyncAt: lastSyncAt ?? '' }
@@ -84,13 +125,7 @@ export function usePriceSync() {
     let failedCount = 0
 
     try {
-      // USD/JPY レートを先に取得
-      let usdToJpy = 150 // フォールバック値
-      try {
-        usdToJpy = await fetchRate('USD', 'JPY')
-      } catch {
-        // Frankfurter がエラーでもフォールバック値で継続
-      }
+      const usdToJpy = await getUsdToJpy()
 
       // 全資産を並列処理（Yahoo Finance はレート制限が緩やか）
       await Promise.allSettled(
@@ -99,19 +134,7 @@ export function usePriceSync() {
             const priceJpy = await fetchPriceJpy(asset, usdToJpy)
             if (priceJpy === null) return // 対応なし・手動管理
 
-            const now = new Date().toISOString()
-            const priceInCurrency =
-              asset.currency === 'USD' ? priceJpy / usdToJpy : priceJpy
-
-            const updated: Partial<Asset> = {
-              currentPrice: priceInCurrency,
-              currentPriceJpy: priceJpy,
-              currentPriceUpdatedAt: now,
-              updatedAt: now,
-            }
-
-            updateAsset(asset.id, updated)
-            await saveAsset({ ...asset, ...updated }, cryptoKey ?? undefined)
+            await applyPrice(asset, priceJpy, usdToJpy)
             updatedCount++
           } catch {
             failedCount++
@@ -138,7 +161,46 @@ export function usePriceSync() {
     } finally {
       setIsSyncing(false)
     }
-  }, [isSyncing, lastSyncAt, assets, cryptoKey, updateAsset, addToast])
+  }, [isSyncing, lastSyncAt, assets, applyPrice, addToast])
+
+  /**
+   * 単一資産の価格を更新する。
+   * ティッカー未設定や非対応クラスの場合はエラートーストを表示。
+   */
+  const syncSingleAsset = useCallback(async (assetId: string): Promise<void> => {
+    const asset = useAssetStore.getState().assets.find((a) => a.id === assetId)
+    if (!asset) return
+    if (syncingAssetIds.has(assetId)) return
+
+    setSyncingAssetIds((prev) => new Set(prev).add(assetId))
+
+    try {
+      const usdToJpy = await getUsdToJpy()
+      const priceJpy = await fetchPriceJpy(asset, usdToJpy)
+
+      if (priceJpy === null) {
+        addToast({
+          type: 'error',
+          message: `「${asset.name}」は自動取得に対応していません（ティッカー・資産クラスを確認してください）`,
+        })
+        return
+      }
+
+      await applyPrice(asset, priceJpy, usdToJpy)
+      const now = new Date().toISOString()
+      setLastSyncAt(now)
+      addToast({ type: 'success', message: `「${asset.name}」の価格を更新しました` })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : `「${asset.name}」の価格更新に失敗しました`
+      addToast({ type: 'error', message })
+    } finally {
+      setSyncingAssetIds((prev) => {
+        const next = new Set(prev)
+        next.delete(assetId)
+        return next
+      })
+    }
+  }, [syncingAssetIds, applyPrice, addToast])
 
   // 自動更新インターバル
   useEffect(() => {
@@ -161,5 +223,5 @@ export function usePriceSync() {
     }
   }, [settings.priceAutoRefresh, settings.priceRefreshIntervalMinutes, syncPrices])
 
-  return { isSyncing, lastSyncAt, syncError, syncPrices }
+  return { isSyncing, syncingAssetIds, lastSyncAt, syncError, syncPrices, syncSingleAsset }
 }

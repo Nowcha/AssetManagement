@@ -1,12 +1,16 @@
 /**
- * TransactionForm - Dark-styled form for recording buy/sell/dividend transactions
- * Uses React Hook Form + Zod validation
+ * TransactionForm - Dark-styled form for recording buy/sell/dividend transactions.
+ * Supports inline new-asset creation: select "＋ 新規資産として記録" to create an asset
+ * from the first purchase without having to pre-register it.
+ * Uses React Hook Form + Zod validation with shouldUnregister: true so that hidden
+ * sections (new-asset fields, quantity/price) are cleanly removed from form state.
  */
 import { useEffect } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { transactionFormSchema, type TransactionFormData } from '@/utils/validators'
+import { transactionFormSchema, NEW_ASSET_SENTINEL, type TransactionFormData } from '@/utils/validators'
 import { TRANSACTION_TYPE_LABELS } from '@/types/transaction.types'
+import { ASSET_CLASS_LABELS, ACCOUNT_TYPE_LABELS } from '@/types/asset.types'
 import type { TransactionType } from '@/types/transaction.types'
 import { useAssetStore } from '@/store/assetStore'
 import { formatJpy, formatQuantity } from '@/utils/formatters'
@@ -82,6 +86,7 @@ export function TransactionForm({
     formState: { errors, isSubmitting: formIsSubmitting },
   } = useForm<TransactionFormData>({
     resolver: zodResolver(transactionFormSchema),
+    shouldUnregister: true,
     defaultValues: {
       assetId: defaultAssetId ?? '',
       type: 'buy',
@@ -96,15 +101,21 @@ export function TransactionForm({
   const watchedQuantity = useWatch({ control, name: 'quantity' })
   const watchedPrice = useWatch({ control, name: 'price' })
   const watchedExchangeRate = useWatch({ control, name: 'exchangeRate' })
+  const watchedNewCurrency = useWatch({ control, name: 'newAssetInfo.currency' })
 
+  const isNewAsset = selectedAssetId === NEW_ASSET_SENTINEL
   const showQuantityPrice = QUANTITY_PRICE_TYPES.includes(selectedType)
 
-  // Show exchange rate only for buy/sell on non-JPY assets
+  // Determine effective currency for exchange rate visibility
   const selectedAsset = assets.find((a) => a.id === selectedAssetId)
+  const effectiveCurrency = isNewAsset
+    ? (watchedNewCurrency ?? 'JPY')
+    : (selectedAsset?.currency ?? 'JPY')
+
   const showExchangeRate =
     FOREIGN_CURRENCY_TYPES.includes(selectedType) &&
-    selectedAsset != null &&
-    selectedAsset.currency !== 'JPY'
+    (isNewAsset || selectedAsset != null) &&
+    effectiveCurrency !== 'JPY'
 
   // Auto-compute amount (JPY) from quantity × price [× exchangeRate] for buy/sell/split
   const qty = watchedQuantity ?? 0
@@ -135,6 +146,7 @@ export function TransactionForm({
             className={errors.assetId ? inputErrorClass : inputBaseClass}
           >
             <option value="">-- 資産を選択 --</option>
+            <option value={NEW_ASSET_SENTINEL}>＋ 新規資産として記録</option>
             {assets.map((asset) => (
               <option key={asset.id} value={asset.id}>
                 {asset.name}
@@ -143,6 +155,87 @@ export function TransactionForm({
             ))}
           </select>
         </FieldWrapper>
+
+        {/* Inline new-asset fields (shown only when creating a new asset) */}
+        {isNewAsset && (
+          <div
+            className="glass-card space-y-4 rounded-lg p-4"
+            style={{ borderLeft: '2px solid #FFA16C' }}
+          >
+            <p className="text-xs font-medium uppercase tracking-widest" style={{ color: '#FFA16C', letterSpacing: '0.08em' }}>
+              新規資産情報
+            </p>
+
+            <FieldWrapper label="資産名" htmlFor="newAssetInfo.name" error={errors.newAssetInfo?.name?.message} required>
+              <input
+                id="newAssetInfo.name"
+                type="text"
+                placeholder="例: トヨタ自動車、eMAXIS Slim 全世界株式"
+                aria-required="true"
+                {...register('newAssetInfo.name')}
+                className={errors.newAssetInfo?.name ? inputErrorClass : inputBaseClass}
+              />
+            </FieldWrapper>
+
+            <FieldWrapper label="ティッカー / コード" htmlFor="newAssetInfo.ticker" error={errors.newAssetInfo?.ticker?.message}>
+              <input
+                id="newAssetInfo.ticker"
+                type="text"
+                placeholder="例: 7203.T、AAPL（任意）"
+                {...register('newAssetInfo.ticker')}
+                className={errors.newAssetInfo?.ticker ? inputErrorClass : inputBaseClass}
+              />
+            </FieldWrapper>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FieldWrapper label="資産クラス" htmlFor="newAssetInfo.assetClass" error={errors.newAssetInfo?.assetClass?.message} required>
+                <select
+                  id="newAssetInfo.assetClass"
+                  aria-required="true"
+                  {...register('newAssetInfo.assetClass')}
+                  className={errors.newAssetInfo?.assetClass ? inputErrorClass : inputBaseClass}
+                >
+                  <option value="">-- 選択 --</option>
+                  {(Object.entries(ASSET_CLASS_LABELS) as [string, string][]).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </FieldWrapper>
+
+              <FieldWrapper label="口座種別" htmlFor="newAssetInfo.accountType" error={errors.newAssetInfo?.accountType?.message} required>
+                <select
+                  id="newAssetInfo.accountType"
+                  aria-required="true"
+                  {...register('newAssetInfo.accountType')}
+                  className={errors.newAssetInfo?.accountType ? inputErrorClass : inputBaseClass}
+                >
+                  <option value="">-- 選択 --</option>
+                  {(Object.entries(ACCOUNT_TYPE_LABELS) as [string, string][]).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </FieldWrapper>
+            </div>
+
+            <FieldWrapper label="通貨" htmlFor="newAssetInfo.currency" error={errors.newAssetInfo?.currency?.message} required>
+              <select
+                id="newAssetInfo.currency"
+                aria-required="true"
+                {...register('newAssetInfo.currency')}
+                className={errors.newAssetInfo?.currency ? inputErrorClass : inputBaseClass}
+              >
+                <option value="">-- 選択 --</option>
+                <option value="JPY">JPY（円）</option>
+                <option value="USD">USD（米ドル）</option>
+                <option value="EUR">EUR（ユーロ）</option>
+                <option value="GBP">GBP（英ポンド）</option>
+                <option value="BTC">BTC（ビットコイン）</option>
+                <option value="ETH">ETH（イーサリアム）</option>
+                <option value="other">その他</option>
+              </select>
+            </FieldWrapper>
+          </div>
+        )}
 
         {/* Transaction type */}
         <FieldWrapper label="取引種別" htmlFor="type" error={errors.type?.message} required>
