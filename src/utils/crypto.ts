@@ -104,7 +104,11 @@ function uint8ArrayToBase64(arr: Uint8Array): string {
   return btoa(String.fromCharCode(...arr))
 }
 
-function base64ToUint8Array(base64: string): Uint8Array {
+function base64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
   const binary = atob(base64)
-  return new Uint8Array(Array.from(binary, (c) => c.charCodeAt(0)))
+  const arr = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) {
+    arr[i] = binary.charCodeAt(i)
+  }
+  return arr
 }
