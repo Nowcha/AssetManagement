@@ -126,12 +126,14 @@ src/components/  → propsレンダリング・ユーザーインタラクショ
 src/api/         → vi.mock でAPI呼び出しをモック
 ```
 
-コミット前に必ず実行:
+コミット・プッシュ前に必ず実行（pre-push フックで自動化済み）:
 ```bash
-npm run test
-npx tsc --noEmit
-npm run lint
+npx tsc --noEmit       # 型エラーを先に確認
+npm run lint           # ESLint エラーを確認
+npm run test:coverage  # テスト + ブランチカバレッジ 70% 以上を確認
 ```
+
+> **初回セットアップ**: `git config core.hooksPath .githooks` を実行して pre-push フックを有効化すること。
 
 ---
 
@@ -145,3 +147,51 @@ chore(deps): update dexie to 4.0.8
 ```
 
 スコープ例: `assets`, `transactions`, `portfolio`, `simulation`, `crypto`, `db`, `api`, `ui`, `pwa`
+
+---
+
+## コーディングアンチパターン（過去に CI を壊したパターン）
+
+### テスト: RTL での DOM 値検証
+```tsx
+// ❌ 型アサーションで値を取得 — ESLint が "unnecessary assertion" と警告
+expect((screen.getByLabelText(/取引日/) as HTMLInputElement).value).toBe('2024-06-15')
+
+// ✅ getByDisplayValue（input/textarea）または toHaveValue（select/input）
+expect(screen.getByDisplayValue('2024-06-15')).toBeInTheDocument()
+expect(screen.getByRole('combobox', { name: /取引種別/ })).toHaveValue('sell')
+```
+
+### テスト: React Router フックを使うコンポーネント
+```tsx
+// ❌ useNavigate / useParams / useLocation を使うコンポーネントを Router なしでレンダリング
+render(<TransactionList />)  // → "useNavigate() may be used only in the context of a <Router>"
+
+// ✅ 必ず MemoryRouter でラップ
+render(<MemoryRouter><TransactionList /></MemoryRouter>)
+```
+
+### テスト: 新規分岐を追加したらテストも追加
+- 新しい `if` / 条件レンダリング / ternary を追加したら、その分岐をカバーするテストを同時に追加する
+- CI のブランチカバレッジ閾値は **70%**（`vitest.config.ts` で設定）
+
+### Zod: `z.preprocess` は使わない
+```typescript
+// ❌ z.preprocess は fee の型を unknown に推論させ、RHF の Resolver 型不一致を引き起こす
+fee: z.preprocess((v) => isNaN(v) ? undefined : v, z.number().optional())
+
+// ✅ スキーマはシンプルに保ち、変換は RHF の setValueAs で行う
+// validators.ts:
+fee: z.number().nonnegative().optional()
+// TransactionForm/index.tsx:
+{...register('fee', { setValueAs: (v: string) => v === '' ? undefined : Number(v) })}
+```
+
+### ESLint: 不要な `??` 演算子
+```typescript
+// ❌ TypeScript が number と推論している値に ?? を使うと ESLint エラー
+const val = watchedAmount ?? 0   // amount は defaultValues で 0 なので number 確定
+
+// ✅ ?? は型が T | undefined / T | null の場合にのみ使う
+const val = watchedAmount
+```
