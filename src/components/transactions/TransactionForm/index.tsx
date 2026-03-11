@@ -196,7 +196,7 @@ export function TransactionForm({
                   className={errors.newAssetInfo?.assetClass ? inputErrorClass : inputBaseClass}
                 >
                   <option value="">-- 選択 --</option>
-                  {(Object.entries(ASSET_CLASS_LABELS) as [string, string][]).map(([value, label]) => (
+                  {Object.entries(ASSET_CLASS_LABELS).map(([value, label]) => (
                     <option key={value} value={value}>{label}</option>
                   ))}
                 </select>
@@ -210,7 +210,7 @@ export function TransactionForm({
                   className={errors.newAssetInfo?.accountType ? inputErrorClass : inputBaseClass}
                 >
                   <option value="">-- 選択 --</option>
-                  {(Object.entries(ACCOUNT_TYPE_LABELS) as [string, string][]).map(([value, label]) => (
+                  {Object.entries(ACCOUNT_TYPE_LABELS).map(([value, label]) => (
                     <option key={value} value={value}>{label}</option>
                   ))}
                 </select>
