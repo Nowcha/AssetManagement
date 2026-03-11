@@ -1,11 +1,12 @@
 /**
- * Stooq API アダプター（無料・APIキー不要・CORS対応）
+ * Stooq API アダプター
  * https://stooq.com
  *
- * Yahoo Finance q1 が GitHub Pages からの CORS を拒否するため、
- * Stooq をブラウザ向けの株価データソースとして使用する。
+ * Stooq 自体は CORS ヘッダーを返さないため、corsproxy.io 経由でアクセスする。
+ * corsproxy.io はオープンソースの無料 CORS プロキシ（APIキー不要）。
+ * https://github.com/nicnocquee/corsproxy.io
  *
- * ティッカー形式:
+ * ティッカー形式（自動変換・ユーザー入力はそのままでOK）:
  *   - 国内株・ETF: "{証券コード}.jp"  例: "9433.jp"（KDDI）
  *   - 米国株:      "{symbol}.us"       例: "aapl.us"（Apple）
  *
@@ -18,6 +19,14 @@
  */
 
 const STOOQ_BASE = 'https://stooq.com/q/l'
+
+/**
+ * CORS プロキシ経由でリクエスト URL を構築する。
+ * corsproxy.io はターゲット URL を ? の後に URL エンコードして渡す形式。
+ */
+function withCorsProxy(targetUrl: string): string {
+  return `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`
+}
 
 export type StooqExchange = 'jp' | 'us'
 
@@ -51,7 +60,8 @@ export async function fetchStooqPrice(
   exchange: StooqExchange,
 ): Promise<number> {
   const stooqTicker = toStooqTicker(ticker, exchange)
-  const url = `${STOOQ_BASE}/?s=${encodeURIComponent(stooqTicker)}&f=sd2t2ohlcvn&e=csv`
+  const targetUrl = `${STOOQ_BASE}/?s=${encodeURIComponent(stooqTicker)}&f=sd2t2ohlcvn&e=csv`
+  const url = withCorsProxy(targetUrl)
 
   const response = await fetch(url)
   if (!response.ok) {
