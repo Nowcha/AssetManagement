@@ -269,3 +269,78 @@ describe('useTransactions.removeTransactionAndUpdateAsset', () => {
     expect(assets[0].quantity).toBe(30)
   })
 })
+
+describe('useTransactions.updateTransactionAndRecalculateAsset', () => {
+  it('updates transaction fields in store and DB', async () => {
+    const asset = makeAsset({ quantity: 0, acquisitionPrice: 0 })
+    useAssetStore.setState({ assets: [asset] })
+
+    const { result } = renderHook(() => useTransactions())
+
+    await act(async () => {
+      await result.current.addTransactionAndUpdateAsset(makeBuyTx({ quantity: 50, price: 1000, amount: 50000 }))
+    })
+
+    const txId = useTransactionStore.getState().transactions[0].id
+
+    await act(async () => {
+      await result.current.updateTransactionAndRecalculateAsset(txId, makeBuyTx({ quantity: 50, price: 1500, amount: 75000 }))
+    })
+
+    const updated = useTransactionStore.getState().transactions.find((t) => t.id === txId)
+    expect(updated?.price).toBe(1500)
+    expect(updated?.amount).toBe(75000)
+  })
+
+  it('recalculates asset acquisitionPrice after update', async () => {
+    const asset = makeAsset({ quantity: 0, acquisitionPrice: 0 })
+    useAssetStore.setState({ assets: [asset] })
+
+    const { result } = renderHook(() => useTransactions())
+
+    await act(async () => {
+      await result.current.addTransactionAndUpdateAsset(makeBuyTx({ quantity: 100, price: 1000, amount: 100000 }))
+    })
+
+    const txId = useTransactionStore.getState().transactions[0].id
+
+    await act(async () => {
+      await result.current.updateTransactionAndRecalculateAsset(txId, makeBuyTx({ quantity: 100, price: 2000, amount: 200000 }))
+    })
+
+    const updatedAsset = useAssetStore.getState().assets.find((a) => a.id === 'asset-1')
+    expect(updatedAsset?.acquisitionPrice).toBe(2000)
+    expect(updatedAsset?.quantity).toBe(100)
+  })
+
+  it('shows success toast after update', async () => {
+    const asset = makeAsset({ quantity: 0, acquisitionPrice: 0 })
+    useAssetStore.setState({ assets: [asset] })
+
+    const { result } = renderHook(() => useTransactions())
+
+    await act(async () => {
+      await result.current.addTransactionAndUpdateAsset(makeBuyTx())
+    })
+
+    const txId = useTransactionStore.getState().transactions[0].id
+    useUiStore.setState({ toasts: [] })
+
+    await act(async () => {
+      await result.current.updateTransactionAndRecalculateAsset(txId, makeBuyTx({ price: 1500, amount: 75000 }))
+    })
+
+    const { toasts } = useUiStore.getState()
+    expect(toasts.some((t) => t.type === 'success')).toBe(true)
+  })
+
+  it('does nothing when transaction id is not found', async () => {
+    const { result } = renderHook(() => useTransactions())
+
+    await act(async () => {
+      await result.current.updateTransactionAndRecalculateAsset('non-existent-id', makeBuyTx())
+    })
+
+    expect(useTransactionStore.getState().transactions).toHaveLength(0)
+  })
+})

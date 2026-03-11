@@ -251,6 +251,53 @@ describe('TransactionForm type-dependent fields', () => {
   })
 })
 
+describe('TransactionForm isEditing mode', () => {
+  it('hides "新規資産として記録" option when isEditing is true', () => {
+    render(
+      <TransactionForm
+        isEditing
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByText('＋ 新規資産として記録')).not.toBeInTheDocument()
+  })
+
+  it('shows "取引を更新" as submit button label when isEditing is true', () => {
+    render(
+      <TransactionForm
+        isEditing
+        defaultValues={{ assetId: 'asset-1', type: 'buy', date: '2024-01-01', amount: 0 }}
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: '取引を更新' })).toBeInTheDocument()
+  })
+
+  it('pre-populates fields from defaultValues', () => {
+    render(
+      <TransactionForm
+        isEditing
+        defaultValues={{
+          assetId: 'asset-1',
+          type: 'sell',
+          date: '2024-06-15',
+          amount: 50000,
+          note: 'テストメモ',
+        }}
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    expect((screen.getByLabelText(/取引種別/) as HTMLSelectElement).value).toBe('sell')
+    expect((screen.getByLabelText(/取引日/) as HTMLInputElement).value).toBe('2024-06-15')
+  })
+})
+
 describe('TransactionForm validation', () => {
   it('shows error when no asset is selected and form is submitted', async () => {
     const user = userEvent.setup()
