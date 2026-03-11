@@ -30,7 +30,7 @@ export async function deriveKey(password: string, saltBase64: string): Promise<C
   return crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
-      salt,
+      salt: salt.buffer as ArrayBuffer,
       iterations: PBKDF2_ITERATIONS,
       hash: 'SHA-256',
     },
@@ -47,7 +47,8 @@ export async function encrypt(
   key: CryptoKey,
 ): Promise<{ data: string; iv: string }> {
   const enc = new TextEncoder()
-  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH))
+  const ivRaw = crypto.getRandomValues(new Uint8Array(IV_LENGTH))
+  const iv = ivRaw.buffer as ArrayBuffer
 
   const ciphertext = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv },
@@ -57,7 +58,7 @@ export async function encrypt(
 
   return {
     data: uint8ArrayToBase64(new Uint8Array(ciphertext)),
-    iv: uint8ArrayToBase64(iv),
+    iv: uint8ArrayToBase64(ivRaw),
   }
 }
 
@@ -67,13 +68,13 @@ export async function decrypt(
   ivBase64: string,
   key: CryptoKey,
 ): Promise<string> {
-  const iv = base64ToUint8Array(ivBase64)
+  const iv = base64ToUint8Array(ivBase64).buffer as ArrayBuffer
   const ciphertext = base64ToUint8Array(dataBase64)
 
   const plaintext = await crypto.subtle.decrypt(
     { name: 'AES-GCM', iv },
     key,
-    ciphertext,
+    ciphertext.buffer as ArrayBuffer,
   )
 
   return new TextDecoder().decode(plaintext)
@@ -104,11 +105,13 @@ function uint8ArrayToBase64(arr: Uint8Array): string {
   return btoa(String.fromCharCode(...arr))
 }
 
-function base64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
+/** Base64文字列をUint8Arrayに変換する。バッファはArrayBufferを保証する */
+function base64ToUint8Array(base64: string): Uint8Array & { buffer: ArrayBuffer } {
   const binary = atob(base64)
-  const arr = new Uint8Array(binary.length)
+  const buf = new ArrayBuffer(binary.length)
+  const arr = new Uint8Array(buf)
   for (let i = 0; i < binary.length; i++) {
     arr[i] = binary.charCodeAt(i)
   }
-  return arr
+  return arr as Uint8Array & { buffer: ArrayBuffer }
 }
