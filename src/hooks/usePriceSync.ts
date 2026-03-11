@@ -2,15 +2,16 @@
  * usePriceSync - 外部API連携による資産価格同期フック
  *
  * 対応API:
- *   - 仮想通貨: CoinGecko (APIキー不要・CORS対応)
- *   - 国内株・ETF・米国株: Stooq (APIキー不要・CORS対応)
- *   - 為替: Frankfurter (APIキー不要・CORS対応)
+ *   - 仮想通貨:              CoinGecko (APIキー不要・CORS対応)
+ *   - 国内株・ETF・投資信託: Yahoo Finance v8 Chart API (APIキー不要)
+ *   - 米国株:                Yahoo Finance v8 Chart API (APIキー不要)
+ *   - 為替:                  Frankfurter API (APIキー不要・CORS対応)
  *
- * Stooq のティッカー形式（自動変換・ユーザー入力はそのままでOK）:
- *   - 国内株・ETF: 証券コード4桁 → "9433.jp"  (".T" 付きでも自動変換)
- *   - 米国株:      シンボル      → "aapl.us"
+ * Yahoo Finance ティッカー形式（自動変換・ユーザー入力はそのままでOK）:
+ *   - 国内株・ETF: "{証券コード}.T"  例: "7203.T" (Toyota), "9433.T" (KDDI)
+ *   - 米国株:      "{symbol}"        例: "AAPL", "MSFT"
  *
- * 注: Yahoo Finance q1 は GitHub Pages からの CORS を拒否するため Stooq に切替済み。
+ * CORS戦略: 直接アクセスを試み、ブロックされた場合は corsproxy.io 経由にフォールバック。
  */
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useAssetStore } from '@/store/assetStore'
@@ -19,7 +20,7 @@ import { useUiStore } from '@/store/uiStore'
 import { saveAsset } from '@/utils/dbService'
 import { fetchCryptoPrices, CRYPTO_TICKER_TO_ID } from '@/api/coinGecko'
 import { fetchRate } from '@/api/frankfurter'
-import { fetchStooqPrice } from '@/api/stooq'
+import { fetchYahooPrice } from '@/api/yahooFinance'
 import type { Asset, AssetClass } from '@/types/asset.types'
 
 export interface PriceSyncResult {
@@ -56,8 +57,8 @@ async function fetchPriceJpy(
 
     case 'stock_us': {
       if (!ticker) return null
-      // Stooq は USD 建て → JPY 換算
-      const priceUsd = await fetchStooqPrice(ticker, 'us')
+      // Yahoo Finance: USD 建て → JPY 換算
+      const priceUsd = await fetchYahooPrice(ticker, 'us')
       return priceUsd * usdToJpy
     }
 
@@ -65,8 +66,8 @@ async function fetchPriceJpy(
     case 'etf':
     case 'mutual_fund': {
       if (!ticker) return null
-      // Stooq は JPY 建てでそのまま返す
-      return await fetchStooqPrice(ticker, 'jp')
+      // Yahoo Finance: JPY 建てでそのまま返す
+      return await fetchYahooPrice(ticker, 'jp')
     }
 
     // 預金・債券・不動産・保険・その他は手動管理
