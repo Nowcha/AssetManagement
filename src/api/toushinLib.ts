@@ -58,22 +58,32 @@ function buildCorsProxyUrl(targetUrl: string): string {
 
 /**
  * POSTリクエストを実行する。CORS ブロック時はプロキシ経由にフォールバック。
+ *
+ * プロキシ経由では Content-Type を text/plain に変更してプリフライトを回避する。
+ * (application/json は CORS preflight を発生させるが、text/plain は発生させない。
+ *  投信APIは Content-Type に依存せず JSON ボディをパースする。)
  */
 async function postToushinApi(body: ToushinSearchRequest): Promise<unknown> {
-  const init: RequestInit = {
+  const jsonBody = JSON.stringify(body)
+
+  // Attempt 1: direct access with proper application/json
+  const directRes = await fetch(TOUSHIN_SEARCH_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  }
-
-  // Attempt 1: direct access
-  const directRes = await fetch(TOUSHIN_SEARCH_URL, init).catch(() => null)
+    body: jsonBody,
+  }).catch(() => null)
   if (directRes?.ok === true) {
     return await directRes.json()
   }
 
   // Attempt 2: CORS proxy fallback
-  const proxyRes = await fetch(buildCorsProxyUrl(TOUSHIN_SEARCH_URL), init)
+  // text/plain を使うことで CORS preflight (OPTIONS) を回避する。
+  // corsproxy.io は POST の preflight に応答しないため、単純リクエストとして送信する。
+  const proxyRes = await fetch(buildCorsProxyUrl(TOUSHIN_SEARCH_URL), {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: jsonBody,
+  })
   if (!proxyRes.ok) {
     throw new Error(`投信ライブラリAPI エラー: HTTP ${proxyRes.status.toString()}`)
   }
