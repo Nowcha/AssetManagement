@@ -133,7 +133,7 @@ export function AssetForm({ defaultValues, onSubmit, onCancel, isSubmitting = fa
         {/* Ticker symbol / Fund search */}
         {watchedAssetClass === 'mutual_fund' ? (
           <FieldWrapper
-            label="ファンド検索 / ISINコード"
+            label="ファンドコード / ファンド検索"
             htmlFor="ticker"
             error={errors.ticker?.message}
           >
@@ -147,10 +147,13 @@ export function AssetForm({ defaultValues, onSubmit, onCancel, isSubmitting = fa
                   setValue('name', fund.fndsNm, { shouldValidate: true })
                 }
               }}
+              onChange={(val) => {
+                setValue('ticker', val, { shouldValidate: true })
+              }}
               error={errors.ticker?.message}
             />
             <p className="mt-1.5 text-xs" style={{ color: '#4B5563' }}>
-              ファンド名またはISINコードで検索（例: eMAXIS Slim、JP90C000ABF2）
+              価格自動取得には<strong style={{ color: '#868F97' }}>ファンドコード（8桁英数字）</strong>を入力（例: 0331418A）。証券会社サイトで確認できます。
             </p>
           </FieldWrapper>
         ) : (

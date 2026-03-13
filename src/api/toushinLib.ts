@@ -14,13 +14,19 @@
  *   - currentPrice として保存し、数量は「万口」単位で入力する運用を想定
  *
  * CORS戦略:
- *   1. 直接アクセスを試みる
- *   2. CORS ブロック時は corsproxy.io 経由にフォールバック
+ *   1. 直接 POST (application/json) を試みる
+ *      → toushin-lib は CORS 非対応のため preflight で失敗する場合が多い
+ *   2. allorigins.win 経由 GET にフォールバック
+ *      → API が GET クエリパラメータに対応していれば成功する
+ *      → 対応していない場合はエラーとなり、ユーザーに手動入力を促す
+ *
+ * 価格取得（usePriceSync）では toushinLib を使用しない。
+ * mutual_fund の価格は Yahoo Finance（ファンドコード+.T）で取得する。
  */
 
 const TOUSHIN_SEARCH_URL =
   'https://toushin-lib.fwg.ne.jp/FdsWeb/FDST999900/fundDataSearch'
-const CORS_PROXY_BASE = 'https://corsproxy.io'
+const ALLORIGINS_BASE = 'https://api.allorigins.win/raw'
 
 // ---- Types ------------------------------------------------------------------
 
@@ -52,42 +58,46 @@ interface ToushinApiResponse {
 
 // ---- Helpers ----------------------------------------------------------------
 
-function buildCorsProxyUrl(targetUrl: string): string {
-  return `${CORS_PROXY_BASE}/?url=${encodeURIComponent(targetUrl)}`
+/**
+ * GET クエリパラメータ形式の URL を構築する。
+ * allorigins.win 経由 GET フォールバック用。
+ */
+function buildGetUrl(body: ToushinSearchRequest): string {
+  const params = new URLSearchParams({
+    isinCd: body.isinCd,
+    unyoKaishaNo: body.unyoKaishaNo,
+    fndsSearchWord: body.fndsSearchWord,
+  })
+  return `${TOUSHIN_SEARCH_URL}?${params.toString()}`
 }
 
 /**
- * POSTリクエストを実行する。CORS ブロック時はプロキシ経由にフォールバック。
+ * API リクエストを実行する。
  *
- * プロキシ経由では Content-Type を text/plain に変更してプリフライトを回避する。
- * (application/json は CORS preflight を発生させるが、text/plain は発生させない。
- *  投信APIは Content-Type に依存せず JSON ボディをパースする。)
+ * Attempt 1: 直接 POST (application/json)
+ *   - toushin-lib が CORS 対応している環境では成功する
+ * Attempt 2: allorigins.win 経由 GET
+ *   - POST が CORS ブロックされた場合のフォールバック
+ *   - toushin-lib が GET クエリパラメータに対応していれば成功する
  */
-async function postToushinApi(body: ToushinSearchRequest): Promise<unknown> {
-  const jsonBody = JSON.stringify(body)
-
-  // Attempt 1: direct access with proper application/json
+async function callToushinApi(body: ToushinSearchRequest): Promise<unknown> {
+  // Attempt 1: direct POST
   const directRes = await fetch(TOUSHIN_SEARCH_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: jsonBody,
+    body: JSON.stringify(body),
   }).catch(() => null)
   if (directRes?.ok === true) {
     return await directRes.json()
   }
 
-  // Attempt 2: CORS proxy fallback
-  // text/plain を使うことで CORS preflight (OPTIONS) を回避する。
-  // corsproxy.io は POST の preflight に応答しないため、単純リクエストとして送信する。
-  const proxyRes = await fetch(buildCorsProxyUrl(TOUSHIN_SEARCH_URL), {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body: jsonBody,
-  })
-  if (!proxyRes.ok) {
-    throw new Error(`投信ライブラリAPI エラー: HTTP ${proxyRes.status.toString()}`)
+  // Attempt 2: allorigins.win GET (GET は preflight なし、異なるサーバー IP)
+  const alloriginsUrl = `${ALLORIGINS_BASE}?url=${encodeURIComponent(buildGetUrl(body))}`
+  const alloriginsRes = await fetch(alloriginsUrl)
+  if (!alloriginsRes.ok) {
+    throw new Error(`投信ライブラリAPI エラー: HTTP ${alloriginsRes.status.toString()}`)
   }
-  return await proxyRes.json()
+  return await alloriginsRes.json()
 }
 
 /**
@@ -141,7 +151,7 @@ export async function searchFunds(query: string): Promise<ToushinFund[]> {
     ? { isinCd: trimmed.toUpperCase(), unyoKaishaNo: '0', fndsSearchWord: '' }
     : { isinCd: '', unyoKaishaNo: '0', fndsSearchWord: trimmed }
 
-  const data = await postToushinApi(body)
+  const data = await callToushinApi(body)
   return parseApiResponse(data)
 }
 

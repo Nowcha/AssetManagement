@@ -84,7 +84,7 @@ describe('searchFunds', () => {
     expect(body.fndsSearchWord).toBe('eMAXIS')
   })
 
-  it('直接アクセスが失敗した場合はCORSプロキシ経由でリトライする', async () => {
+  it('直接アクセスが失敗した場合は allorigins.win GET でリトライする', async () => {
     let callCount = 0
     const mockFetch = vi.fn().mockImplementation(() => {
       callCount++
@@ -103,11 +103,11 @@ describe('searchFunds', () => {
     expect(mockFetch).toHaveBeenCalledTimes(2)
 
     const [proxyUrl] = mockFetch.mock.calls[1] as [string]
-    expect(proxyUrl).toContain('corsproxy.io')
+    expect(proxyUrl).toContain('allorigins.win')
     expect(proxyUrl).toContain(encodeURIComponent('https://toushin-lib.fwg.ne.jp'))
   })
 
-  it('直接アクセスが例外になった場合もCORSプロキシ経由でリトライする', async () => {
+  it('直接アクセスが例外になった場合も allorigins.win GET でリトライする', async () => {
     let callCount = 0
     const mockFetch = vi.fn().mockImplementation(() => {
       callCount++

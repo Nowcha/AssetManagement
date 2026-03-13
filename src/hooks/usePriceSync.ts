@@ -21,7 +21,6 @@ import { saveAsset } from '@/utils/dbService'
 import { fetchCryptoPrices, CRYPTO_TICKER_TO_ID } from '@/api/coinGecko'
 import { fetchRate } from '@/api/frankfurter'
 import { fetchYahooPrice } from '@/api/yahooFinance'
-import { fetchFundPrice } from '@/api/toushinLib'
 import type { Asset, AssetClass } from '@/types/asset.types'
 
 export interface PriceSyncResult {
@@ -72,8 +71,9 @@ async function fetchPriceJpy(
 
     case 'mutual_fund': {
       if (!ticker) return null
-      // 投信総合検索ライブラリ: 基準価額（円/1万口）を JPY でそのまま返す
-      return await fetchFundPrice(ticker)
+      // Yahoo Finance: ファンドコード（8桁）+.T 形式で JPY 建て取得
+      // 例: "0331418A" → "0331418A.T"
+      return await fetchYahooPrice(ticker, 'jp')
     }
 
     // 預金・債券・不動産・保険・その他は手動管理

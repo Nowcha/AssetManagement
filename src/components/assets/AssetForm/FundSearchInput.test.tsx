@@ -118,8 +118,37 @@ describe('FundSearchInput search behavior', () => {
     await user.type(screen.getByRole('combobox'), 'eMAXIS')
 
     await waitFor(() => {
-      expect(screen.getByText(/失敗しました/)).toBeInTheDocument()
+      expect(screen.getByText(/接続できません/)).toBeInTheDocument()
     }, { timeout: 2000 })
+  })
+})
+
+describe('FundSearchInput direct input (onChange)', () => {
+  it('直接入力すると onChange コールバックが呼ばれる', async () => {
+    vi.mocked(toushinLib.searchFunds).mockResolvedValue([])
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+
+    render(<FundSearchInput value="" onSelect={vi.fn()} onChange={onChange} />)
+
+    await user.type(screen.getByRole('combobox'), '0331418A')
+
+    expect(onChange).toHaveBeenCalled()
+    // 最後の呼び出しが完全な入力値を持つ
+    const calls = onChange.mock.calls as [string][]
+    const lastValue = calls[calls.length - 1][0]
+    expect(lastValue).toBe('0331418A')
+  })
+
+  it('onChange なしでも直接入力でエラーにならない', async () => {
+    vi.mocked(toushinLib.searchFunds).mockResolvedValue([])
+    const user = userEvent.setup()
+
+    render(<FundSearchInput value="" onSelect={vi.fn()} />)
+
+    // onChange prop なしでも入力できる
+    await user.type(screen.getByRole('combobox'), '0331418A')
+    expect(screen.getByRole('combobox')).toHaveValue('0331418A')
   })
 })
 

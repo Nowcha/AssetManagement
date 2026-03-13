@@ -1,8 +1,11 @@
 /**
  * FundSearchInput - 投資信託ファンド検索コンポーネント
  *
- * 投信総合検索ライブラリAPIを使ってファンド名またはISINコードで検索し、
+ * 投信総合検索ライブラリAPIを使ってファンド名で検索し、
  * 選択したファンドの情報をコールバックで通知する。
+ *
+ * APIが利用できない場合はファンドコード（8桁）の直接入力にフォールバックする。
+ * 価格の自動取得には Yahoo Finance 用の「ファンドコード」（例: 0331418A）が必要。
  */
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { searchFunds, type ToushinFund } from '@/api/toushinLib'
@@ -14,10 +17,12 @@ export interface FundSearchSelection {
 }
 
 interface FundSearchInputProps {
-  /** 現在の ticker 値（ISIN） */
+  /** 現在の ticker 値 */
   value: string
   /** ファンド選択時のコールバック */
   onSelect: (fund: FundSearchSelection) => void
+  /** 直接入力時のコールバック（検索非使用でのファンドコード入力に対応） */
+  onChange?: (value: string) => void
   /** 入力欄の id（アクセシビリティ） */
   id?: string
   /** エラーメッセージ */
@@ -27,7 +32,7 @@ interface FundSearchInputProps {
 const DEBOUNCE_MS = 400
 const MIN_QUERY_LENGTH = 2
 
-export function FundSearchInput({ value, onSelect, id = 'ticker', error }: FundSearchInputProps) {
+export function FundSearchInput({ value, onSelect, onChange, id = 'ticker', error }: FundSearchInputProps) {
   const [query, setQuery] = useState(value)
   const [results, setResults] = useState<ToushinFund[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -63,7 +68,7 @@ export function FundSearchInput({ value, onSelect, id = 'ticker', error }: FundS
           }
         })
         .catch(() => {
-          setSearchError('ファンド検索に失敗しました。再度お試しください。')
+          setSearchError('検索APIに接続できません。ファンドコード（8桁）を直接入力してください。')
           setResults([])
           setIsOpen(false)
         })
@@ -76,6 +81,13 @@ export function FundSearchInput({ value, onSelect, id = 'ticker', error }: FundS
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
   }, [query])
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value
+    setQuery(val)
+    // 直接入力の場合もフォームの ticker フィールドを更新する
+    onChange?.(val)
+  }, [onChange])
 
   const handleSelect = useCallback((fund: ToushinFund) => {
     setQuery(fund.isinCd)
@@ -118,9 +130,9 @@ export function FundSearchInput({ value, onSelect, id = 'ticker', error }: FundS
           id={id}
           role="combobox"
           type="text"
-          placeholder="ファンド名またはISINコード（例: eMAXIS Slim, JP90C000ABF2）"
+          placeholder="ファンド名で検索 または ファンドコード直接入力（例: 0331418A）"
           value={query}
-          onChange={(e) => { setQuery(e.target.value) }}
+          onChange={handleChange}
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
           className={baseClass}
@@ -159,14 +171,7 @@ export function FundSearchInput({ value, onSelect, id = 'ticker', error }: FundS
         )}
       </div>
 
-      {/* 選択済みISINの表示 */}
-      {value && value !== query && (
-        <p className="mt-1 text-xs" style={{ color: '#868F97' }}>
-          選択中: <span style={{ color: '#FFA16C' }}>{value}</span>
-        </p>
-      )}
-
-      {/* 検索エラー */}
+      {/* 検索エラー / 手動入力ガイダンス */}
       {!isLoading && searchError && query.trim().length >= MIN_QUERY_LENGTH && (
         <p className="mt-1 text-xs" style={{ color: '#868F97' }}>
           {searchError}
