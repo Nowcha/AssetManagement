@@ -7,6 +7,11 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AssetForm } from './index'
 import type { AssetFormData } from '@/utils/validators'
+import * as toushinLib from '@/api/toushinLib'
+
+vi.mock('@/api/toushinLib', () => ({
+  searchFunds: vi.fn().mockResolvedValue([]),
+}))
 
 // Helper: fill in required fields with valid data
 async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
@@ -149,6 +154,71 @@ describe('AssetForm field error styles', () => {
     await waitFor(() => {
       const alerts = screen.getAllByRole('alert')
       expect(alerts.some((a) => a.textContent?.includes('20文字') ?? false)).toBe(true)
+    })
+  })
+})
+
+describe('AssetForm mutual_fund mode', () => {
+  it('mutual_fund 選択時はファンド検索入力が表示される', async () => {
+    const user = userEvent.setup()
+    render(<AssetForm onSubmit={vi.fn()} onCancel={vi.fn()} />)
+
+    await user.selectOptions(screen.getByLabelText(/資産クラス/), 'mutual_fund')
+
+    // FundSearchInput はコンボボックスとして表示される
+    expect(screen.getByRole('combobox', { name: /ファンド検索/i })).toBeInTheDocument()
+    // 通常のティッカー入力は表示されない
+    expect(screen.queryByPlaceholderText(/7203, SPY, BTC/)).not.toBeInTheDocument()
+  })
+
+  it('mutual_fund 以外ではティッカー入力が表示される', () => {
+    render(<AssetForm onSubmit={vi.fn()} onCancel={vi.fn()} />)
+    // デフォルトは stock_jp
+    expect(screen.getByLabelText(/ティッカー/)).toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: /ファンド検索/i })).not.toBeInTheDocument()
+  })
+
+  it('mutual_fund の defaultValues に ISIN が入っている場合はコンボボックスに表示される', () => {
+    render(
+      <AssetForm
+        defaultValues={{ assetClass: 'mutual_fund', ticker: 'JP90C000ABF2' }}
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    )
+    const combobox = screen.getByRole('combobox', { name: /ファンド検索/i })
+    expect(combobox).toHaveValue('JP90C000ABF2')
+  })
+
+  it('ファンド選択で ISIN と名前が自動設定される', async () => {
+    const mockFund: toushinLib.ToushinFund = {
+      isinCd: 'JP90C000ABF2',
+      fndsNm: 'eMAXIS Slim 全世界株式（オール・カントリー）',
+      unyoKaishaNm: '三菱UFJアセットマネジメント',
+      kijunKa: 25000,
+      kijunKaDt: '20240301',
+    }
+    vi.mocked(toushinLib.searchFunds).mockResolvedValue([mockFund])
+
+    const user = userEvent.setup()
+    render(<AssetForm onSubmit={vi.fn()} onCancel={vi.fn()} />)
+
+    await user.selectOptions(screen.getByLabelText(/資産クラス/), 'mutual_fund')
+
+    const combobox = screen.getByRole('combobox', { name: /ファンド検索/i })
+    await user.type(combobox, 'eMAXIS')
+
+    await waitFor(() => {
+      expect(screen.getByRole('listbox')).toBeInTheDocument()
+    }, { timeout: 2000 })
+
+    await user.click(screen.getByText('eMAXIS Slim 全世界株式（オール・カントリー）'))
+
+    // 名前フィールドにファンド名が自動入力される
+    await waitFor(() => {
+      expect(screen.getByLabelText(/資産名/)).toHaveValue(
+        'eMAXIS Slim 全世界株式（オール・カントリー）',
+      )
     })
   })
 })

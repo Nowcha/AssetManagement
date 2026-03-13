@@ -9,6 +9,7 @@ import { assetFormSchema, type AssetFormData } from '@/utils/validators'
 import { ASSET_CLASS_LABELS, ACCOUNT_TYPE_LABELS } from '@/types/asset.types'
 import type { AssetClass, AccountType, CurrencyCode } from '@/types/asset.types'
 import { formatJpy, formatUsd, formatQuantity } from '@/utils/formatters'
+import { FundSearchInput } from './FundSearchInput'
 
 function formatAssetAmount(value: number, currency: string): string {
   if (currency === 'JPY') return formatJpy(value)
@@ -75,6 +76,7 @@ export function AssetForm({ defaultValues, onSubmit, onCancel, isSubmitting = fa
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors, isSubmitting: formIsSubmitting },
   } = useForm<AssetFormData, unknown, AssetFormData>({
     // Cast resolver to handle the tags type mismatch between zod inference and explicit type
@@ -96,8 +98,14 @@ export function AssetForm({ defaultValues, onSubmit, onCancel, isSubmitting = fa
 
   const submitting = isSubmitting || formIsSubmitting
 
-  const [watchedQuantity, watchedAcquisitionPrice, watchedCurrentPrice, watchedCurrency] =
-    watch(['quantity', 'acquisitionPrice', 'currentPrice', 'currency'])
+  const [
+    watchedQuantity,
+    watchedAcquisitionPrice,
+    watchedCurrentPrice,
+    watchedCurrency,
+    watchedAssetClass,
+    watchedTicker,
+  ] = watch(['quantity', 'acquisitionPrice', 'currentPrice', 'currency', 'assetClass', 'ticker'])
 
   const acquisitionTotal = watchedQuantity * watchedAcquisitionPrice
   const currentTotal = watchedQuantity * watchedCurrentPrice
@@ -122,16 +130,40 @@ export function AssetForm({ defaultValues, onSubmit, onCancel, isSubmitting = fa
           />
         </FieldWrapper>
 
-        {/* Ticker symbol */}
-        <FieldWrapper label="ティッカー / 銘柄コード" htmlFor="ticker" error={errors.ticker?.message}>
-          <input
-            id="ticker"
-            type="text"
-            placeholder="例: 7203, SPY, BTC"
-            {...register('ticker')}
-            className={errors.ticker ? inputErrorClass : inputBaseClass}
-          />
-        </FieldWrapper>
+        {/* Ticker symbol / Fund search */}
+        {watchedAssetClass === 'mutual_fund' ? (
+          <FieldWrapper
+            label="ファンド検索 / ISINコード"
+            htmlFor="ticker"
+            error={errors.ticker?.message}
+          >
+            <FundSearchInput
+              id="ticker"
+              value={watchedTicker ?? ''}
+              onSelect={(fund) => {
+                setValue('ticker', fund.isinCd, { shouldValidate: true })
+                // 資産名が未入力の場合はファンド名を自動補完
+                if (!watch('name')) {
+                  setValue('name', fund.fndsNm, { shouldValidate: true })
+                }
+              }}
+              error={errors.ticker?.message}
+            />
+            <p className="mt-1.5 text-xs" style={{ color: '#4B5563' }}>
+              ファンド名またはISINコードで検索（例: eMAXIS Slim、JP90C000ABF2）
+            </p>
+          </FieldWrapper>
+        ) : (
+          <FieldWrapper label="ティッカー / 銘柄コード" htmlFor="ticker" error={errors.ticker?.message}>
+            <input
+              id="ticker"
+              type="text"
+              placeholder="例: 7203, SPY, BTC"
+              {...register('ticker')}
+              className={errors.ticker ? inputErrorClass : inputBaseClass}
+            />
+          </FieldWrapper>
+        )}
 
         {/* Asset class and account type - 2 columns */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
