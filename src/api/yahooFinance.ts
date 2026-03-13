@@ -7,13 +7,14 @@
  * Endpoint: https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?range=1d&interval=1d
  * Response: JSON with chart.result[0].meta.regularMarketPrice
  *
- * CORS strategy:
- *   1. Try direct access first (Yahoo Finance v8 supports CORS in most browsers)
- *   2. Fall back to corsproxy.io if blocked (uses correct ?url= format with encoding)
+ * CORS strategy (3-attempt fallback):
+ *   1. Direct access
+ *   2. corsproxy.io  — Yahoo Finance may block this proxy's server IPs (→ 403)
+ *   3. allorigins.win — different server IPs; last resort
  *
  * Ticker formats:
- *   - Japan stocks/ETFs/mutual funds: "{code}.T"  e.g. "7203.T" (Toyota), "9433.T" (KDDI)
- *   - US stocks:                       "{symbol}"  e.g. "AAPL" (Apple), "MSFT"
+ *   - Japan stocks/ETFs: "{code}.T"  e.g. "7203.T" (Toyota), "9433.T" (KDDI)
+ *   - US stocks:         "{symbol}"  e.g. "AAPL" (Apple), "MSFT"
  *
  * Input normalization (toYahooTicker):
  *   - "7203"       + jp → "7203.T"   (append .T)
@@ -25,7 +26,8 @@
  */
 
 const YF_CHART_BASE = 'https://query1.finance.yahoo.com/v8/finance/chart'
-const CORS_PROXY_BASE = 'https://corsproxy.io'
+const CORS_PROXY_1_BASE = 'https://corsproxy.io'
+const CORS_PROXY_2_BASE = 'https://api.allorigins.win/raw'
 
 // ---- Types ------------------------------------------------------------------
 
@@ -68,10 +70,16 @@ function buildYahooUrl(ticker: string): string {
 
 /**
  * Wraps a URL with the corsproxy.io CORS proxy.
- * Uses the correct ?url= parameter with URL encoding.
  */
 export function withCorsProxy(targetUrl: string): string {
-  return `${CORS_PROXY_BASE}/?url=${encodeURIComponent(targetUrl)}`
+  return `${CORS_PROXY_1_BASE}/?url=${encodeURIComponent(targetUrl)}`
+}
+
+/**
+ * Wraps a URL with the allorigins.win CORS proxy.
+ */
+export function withAlloriginsProxy(targetUrl: string): string {
+  return `${CORS_PROXY_2_BASE}?url=${encodeURIComponent(targetUrl)}`
 }
 
 /**
@@ -108,8 +116,10 @@ function parseYahooResponse(data: unknown, ticker: string): number {
 /**
  * Fetches the current market price for a ticker from Yahoo Finance.
  *
- * Tries direct access first. If CORS is blocked or the response is not ok,
- * automatically retries via corsproxy.io.
+ * 3-attempt CORS fallback:
+ *   1. Direct access (fastest; may fail if Yahoo Finance revokes CORS headers)
+ *   2. corsproxy.io  (may fail with 403 if Yahoo Finance blocks the proxy's IPs)
+ *   3. allorigins.win (different server IPs; last resort)
  *
  * @param ticker   - User-entered ticker (will be normalized via toYahooTicker)
  * @param exchange - Exchange type: 'jp' for Japan, 'us' for US
@@ -122,21 +132,28 @@ export async function fetchYahooPrice(
   const normalizedTicker = toYahooTicker(ticker, exchange)
   const yahooUrl = buildYahooUrl(normalizedTicker)
 
-  // Attempt 1: direct access (Yahoo Finance v8 supports CORS)
+  // Attempt 1: direct access
   const directRes = await fetch(yahooUrl).catch(() => null)
   if (directRes?.ok === true) {
     const data: unknown = await directRes.json()
     return parseYahooResponse(data, normalizedTicker)
   }
 
-  // Attempt 2: CORS proxy fallback
-  const proxyRes = await fetch(withCorsProxy(yahooUrl))
-  if (!proxyRes.ok) {
+  // Attempt 2: corsproxy.io (Yahoo Finance may block this proxy's IPs with 403)
+  const proxy1Res = await fetch(withCorsProxy(yahooUrl)).catch(() => null)
+  if (proxy1Res?.ok === true) {
+    const data: unknown = await proxy1Res.json()
+    return parseYahooResponse(data, normalizedTicker)
+  }
+
+  // Attempt 3: allorigins.win (different server IPs, last resort)
+  const proxy2Res = await fetch(withAlloriginsProxy(yahooUrl))
+  if (!proxy2Res.ok) {
     throw new Error(
-      `価格取得エラー: HTTP ${proxyRes.status.toString()} (${normalizedTicker})`,
+      `価格取得エラー: HTTP ${proxy2Res.status.toString()} (${normalizedTicker})`,
     )
   }
 
-  const data: unknown = await proxyRes.json()
+  const data: unknown = await proxy2Res.json()
   return parseYahooResponse(data, normalizedTicker)
 }

@@ -2,7 +2,7 @@
  * Unit tests for Yahoo Finance API adapter
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { toYahooTicker, fetchYahooPrice, withCorsProxy } from './yahooFinance'
+import { toYahooTicker, fetchYahooPrice, withCorsProxy, withAlloriginsProxy } from './yahooFinance'
 
 // ---- toYahooTicker ----------------------------------------------------------
 
@@ -57,8 +57,26 @@ describe('withCorsProxy', () => {
     const target = 'https://query1.finance.yahoo.com/v8/finance/chart/7203.T?range=1d&interval=1d'
     const result = withCorsProxy(target)
     expect(result).toMatch(/^https:\/\/corsproxy\.io\/\?url=/)
-    // Encoded URL must not contain raw ? or & after the proxy prefix
     const encoded = result.replace('https://corsproxy.io/?url=', '')
+    expect(encoded).not.toContain('?')
+    expect(encoded).not.toContain('&')
+  })
+})
+
+// ---- withAlloriginsProxy ----------------------------------------------------
+
+describe('withAlloriginsProxy', () => {
+  it('wraps URL with allorigins.win ?url= format', () => {
+    const target = 'https://example.com/api?foo=bar'
+    const result = withAlloriginsProxy(target)
+    expect(result).toBe(`https://api.allorigins.win/raw?url=${encodeURIComponent(target)}`)
+  })
+
+  it('encodes special characters in target URL', () => {
+    const target = 'https://query1.finance.yahoo.com/v8/finance/chart/7203.T?range=1d&interval=1d'
+    const result = withAlloriginsProxy(target)
+    expect(result).toMatch(/^https:\/\/api\.allorigins\.win\/raw\?url=/)
+    const encoded = result.replace('https://api.allorigins.win/raw?url=', '')
     expect(encoded).not.toContain('?')
     expect(encoded).not.toContain('&')
   })
@@ -137,9 +155,9 @@ describe('fetchYahooPrice', () => {
     expect(price).toBe(171.5)
   })
 
-  // --- Direct blocked → proxy fallback ---
+  // --- Direct blocked → corsproxy.io ---
 
-  it('falls back to proxy when direct fetch throws (CORS blocked)', async () => {
+  it('falls back to corsproxy.io when direct fetch throws (CORS blocked)', async () => {
     const fetchMock = vi.fn()
       .mockRejectedValueOnce(new TypeError('Failed to fetch'))  // direct blocked
       .mockResolvedValueOnce({
@@ -154,9 +172,9 @@ describe('fetchYahooPrice', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
-  it('falls back to proxy when direct returns non-ok status', async () => {
+  it('falls back to corsproxy.io when direct returns non-ok status', async () => {
     const fetchMock = vi.fn()
-      .mockResolvedValueOnce({ ok: false, status: 401 })    // direct blocked
+      .mockResolvedValueOnce({ ok: false, status: 401 })
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(VALID_JP_RESPONSE),
@@ -168,7 +186,44 @@ describe('fetchYahooPrice', () => {
     expect(price).toBe(3195.0)
   })
 
-  // --- Proxy URL format ---
+  // --- corsproxy.io blocked → allorigins.win ---
+
+  it('falls back to allorigins.win when direct and corsproxy.io both fail', async () => {
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))  // direct: CORS blocked
+      .mockResolvedValueOnce({ ok: false, status: 403 })        // corsproxy.io: blocked by Yahoo
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(VALID_JP_RESPONSE),
+      })                                                          // allorigins.win: success
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    const price = await fetchYahooPrice('9433.T', 'jp')
+    expect(price).toBe(3195.0)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+
+    const alloriginsUrl: string = fetchMock.mock.calls[2][0] as string
+    expect(alloriginsUrl).toContain('allorigins.win')
+    expect(alloriginsUrl).toContain(encodeURIComponent('https://query1.finance.yahoo.com'))
+  })
+
+  it('falls back to allorigins.win when corsproxy.io throws', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: false, status: 403 })        // direct: non-ok
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))  // corsproxy.io: throws
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(VALID_US_RESPONSE),
+      })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    const price = await fetchYahooPrice('AAPL', 'us')
+    expect(price).toBe(171.5)
+  })
+
+  // --- Proxy URL formats ---
 
   it('calls direct URL first with correct Yahoo Finance format', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
@@ -185,7 +240,7 @@ describe('fetchYahooPrice', () => {
     expect(calledUrl).toContain('interval=1d')
   })
 
-  it('uses corsproxy.io with ?url= format for proxy fallback', async () => {
+  it('uses corsproxy.io with ?url= format for second attempt', async () => {
     const fetchMock = vi.fn()
       .mockRejectedValueOnce(new TypeError('Failed to fetch'))
       .mockResolvedValueOnce({
@@ -197,11 +252,26 @@ describe('fetchYahooPrice', () => {
     await fetchYahooPrice('9433.T', 'jp')
 
     const proxyUrl: string = fetchMock.mock.calls[1][0] as string
-    // Must use ?url= format (not just ?)
     expect(proxyUrl).toMatch(/^https:\/\/corsproxy\.io\/\?url=/)
-    // Encoded target must contain yahoo finance domain
     expect(proxyUrl).toContain(encodeURIComponent('https://query1.finance.yahoo.com'))
     expect(proxyUrl).toContain(encodeURIComponent('9433.T'))
+  })
+
+  it('uses allorigins.win with ?url= format for third attempt', async () => {
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce({ ok: false, status: 403 })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(VALID_JP_RESPONSE),
+      })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await fetchYahooPrice('9433.T', 'jp')
+
+    const alloriginsUrl: string = fetchMock.mock.calls[2][0] as string
+    expect(alloriginsUrl).toMatch(/^https:\/\/api\.allorigins\.win\/raw\?url=/)
+    expect(alloriginsUrl).toContain(encodeURIComponent('https://query1.finance.yahoo.com'))
   })
 
   // --- Ticker normalization ---
@@ -239,13 +309,15 @@ describe('fetchYahooPrice', () => {
     await expect(fetchYahooPrice('9999.T', 'jp')).rejects.toThrow('データが見つかりません')
   })
 
-  it('throws when both direct and proxy fail', async () => {
+  it('throws when all three attempts fail', async () => {
     const fetchMock = vi.fn()
-      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
-      .mockResolvedValueOnce({ ok: false, status: 429 })
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))  // direct
+      .mockResolvedValueOnce({ ok: false, status: 403 })        // corsproxy.io
+      .mockResolvedValueOnce({ ok: false, status: 429 })        // allorigins.win
 
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(fetchYahooPrice('9433.T', 'jp')).rejects.toThrow('HTTP 429')
+    expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 })
